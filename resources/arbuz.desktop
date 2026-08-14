@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Arbuz
+GenericName=Spreadsheet
+GenericName[ru]=Электронные таблицы
+Comment=Spreadsheet by SYFaren
+Comment[ru]=Электронные таблицы, создатель SYFaren
+Exec=arbuz
+Icon=arbuz
+Terminal=false
+Categories=Office;Spreadsheet;
+StartupWMClass=arbuz

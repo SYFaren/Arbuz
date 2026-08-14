@@ -1,0 +1,22 @@
+{
+  "name": "Тёмная",
+  "flesh": "#EDEDED",
+  "fleshHot": "#CCCCCC",
+  "rind": "#1A1A1A",
+  "rindStripe": "#2A2A2A",
+  "seed": "#EDEDED",
+  "pith": "#141414",
+  "windowBg": "#111111",
+  "headerText": "#EDEDED",
+  "gridLine": "#2A2A2A",
+  "selection": "#1F4E79",
+  "selectionText": "#F4F8FC",
+  "selectionBorder": "#79B8F2",
+  "formulaBar": "#1A1A1A",
+  "button": "#1C1C1C",
+  "buttonText": "#EDEDED",
+  "tabActive": "#141414",
+  "tabInactive": "#1A1A1A",
+  "menuBg": "#161616",
+  "statusBg": "#111111"
+}

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+export PATH="${HOME}/.local/opt/cmake/bin:${PATH}"
+QT="${HOME}/Qt/6.5.3/gcc_64"
+DEPS="${ROOT}/.deps/usr"
+cmake -S "${ROOT}" -B "${ROOT}/build" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="${QT};${DEPS}" \
+  -DXKB_INCLUDE_DIR="${DEPS}/include" \
+  -DXKB_LIBRARY="${DEPS}/lib/x86_64-linux-gnu/libxkbcommon.so" \
+  -DOPENGL_INCLUDE_DIR="${DEPS}/include" \
+  -DOPENGL_opengl_LIBRARY="${DEPS}/lib/x86_64-linux-gnu/libOpenGL.so" \
+  -DOPENGL_glx_LIBRARY="${DEPS}/lib/x86_64-linux-gnu/libGLX.so" \
+  -DOPENGL_gl_LIBRARY="${DEPS}/lib/x86_64-linux-gnu/libGL.so"
+cmake --build "${ROOT}/build" -j"$(nproc)"

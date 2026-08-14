@@ -1,0 +1,22 @@
+{
+  "name": "Арбуз",
+  "flesh": "#B83A45",
+  "fleshHot": "#D45A62",
+  "rind": "#2A3F32",
+  "rindStripe": "#3D5645",
+  "seed": "#1E1714",
+  "pith": "#FFF8F2",
+  "windowBg": "#F3EBE3",
+  "headerText": "#F4EFE6",
+  "gridLine": "#E4D4C6",
+  "selection": "#F0D4D6",
+  "selectionText": "#1E1714",
+  "selectionBorder": "#B83A45",
+  "formulaBar": "#FFFCF8",
+  "button": "#2A3F32",
+  "buttonText": "#F4EFE6",
+  "tabActive": "#FFF8F2",
+  "tabInactive": "#DCCFC2",
+  "menuBg": "#2A3F32",
+  "statusBg": "#24362C"
+}

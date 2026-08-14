@@ -1,0 +1,22 @@
+{
+  "name": "Белая",
+  "flesh": "#111111",
+  "fleshHot": "#333333",
+  "rind": "#F2F2F2",
+  "rindStripe": "#D9D9D9",
+  "seed": "#111111",
+  "pith": "#FFFFFF",
+  "windowBg": "#FFFFFF",
+  "headerText": "#111111",
+  "gridLine": "#D0D0D0",
+  "selection": "#C5DDF8",
+  "selectionText": "#111111",
+  "selectionBorder": "#2B6CB0",
+  "formulaBar": "#FFFFFF",
+  "button": "#F5F5F5",
+  "buttonText": "#111111",
+  "tabActive": "#FFFFFF",
+  "tabInactive": "#E8E8E8",
+  "menuBg": "#FFFFFF",
+  "statusBg": "#F0F0F0"
+}

@@ -1,0 +1,6 @@
+Vendored open-source modules used by Arbuz.
+
+QXlsx  — https://github.com/QtExcel/QXlsx          MIT
+xlfparser — https://github.com/pyxll/xlfparser     MIT
+
+See ../CREDITS.md and each project's LICENSE.
