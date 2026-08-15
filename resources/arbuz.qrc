@@ -3,7 +3,10 @@
         <file>themes/arbuz.json</file>
         <file>themes/white.json</file>
         <file>themes/dark.json</file>
-        <file alias="CREDITS.md">../CREDITS.md</file>
+        <file>i18n/en.json</file>
+        <file>i18n/ru.json</file>
+        <file alias="credits/en.md">../CREDITS.md</file>
+        <file alias="credits/ru.md">../CREDITS.ru.md</file>
         <file>icons/arbuz-16.png</file>
         <file>icons/arbuz-24.png</file>
         <file>icons/arbuz-32.png</file>

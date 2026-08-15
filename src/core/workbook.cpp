@@ -2,6 +2,7 @@
 #include "cellref.h"
 #include "exceldate.h"
 #include "formulaengine.h"
+#include "i18n.h"
 #include "numformat.h"
 
 #include <QUndoCommand>
@@ -89,7 +90,7 @@ Workbook::Workbook(QObject *parent)
 void Workbook::resetToEmpty()
 {
     m_sheets.clear();
-    addSheet(QStringLiteral("Лист1"));
+    addSheet(I18n::t("ui.sheet1"));
     if (m_undo)
         m_undo->clear();
     emit structureChanged();
@@ -121,7 +122,7 @@ int Workbook::addSheet(const QString &name)
     Worksheet ws;
     QString n = name;
     if (n.isEmpty())
-        n = QStringLiteral("Лист%1").arg(m_sheets.size() + 1);
+        n = I18n::t("ui.sheet_1").arg(m_sheets.size() + 1);
     ws.name = n;
     m_sheets.append(ws);
     emit structureChanged();

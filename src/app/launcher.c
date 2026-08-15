@@ -69,7 +69,10 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdLine, int show)
 
     if (GetFileAttributesW(child) == INVALID_FILE_ATTRIBUTES) {
         MessageBoxW(NULL,
-                    L"Не найден runtime\\engine.exe.\n"
+                    L"runtime\\engine.exe not found.\n"
+                    L"Не найден runtime\\engine.exe.\n\n"
+                    L"Unpack the whole archive. Run Arbuz.exe from the folder root —\n"
+                    L"not from runtime and not as a lone file.\n\n"
                     L"Распакуйте весь архив целиком. Запускайте Arbuz.exe из корня папки —\n"
                     L"не из runtime и не отдельным файлом.",
                     L"Arbuz",
@@ -106,7 +109,10 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdLine, int show)
     si.cb = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
     if (!CreateProcessW(child, cmd, NULL, NULL, FALSE, 0, NULL, root, &si, &pi)) {
-        MessageBoxW(NULL, L"Не удалось запустить runtime\\engine.exe.", L"Arbuz", MB_ICONERROR | MB_OK);
+        MessageBoxW(NULL,
+                    L"Could not start runtime\\engine.exe.\n"
+                    L"Не удалось запустить runtime\\engine.exe.",
+                    L"Arbuz", MB_ICONERROR | MB_OK);
         return 1;
     }
     WaitForSingleObject(pi.hProcess, INFINITE);

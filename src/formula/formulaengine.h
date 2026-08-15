@@ -72,12 +72,13 @@ public:
         QString name;
         QString syntax;
         QString category;
-        const char *ru = nullptr;
-        const char *en = nullptr;
-        QString ruStr;
-        QString enStr;
-        QString helpRu() const { return ru ? QString::fromUtf8(ru) : ruStr; }
-        QString helpEn() const { return en ? QString::fromUtf8(en) : enStr; }
+        /** i18n key for built-in help, e.g. "fn.SUM.help". Empty for plugins. */
+        QString helpKey;
+        QString helpRuOverride;
+        QString helpEnOverride;
+        QString help() const;
+        QString helpRu() const;
+        QString helpEn() const;
     };
 
     FormulaValue evaluate(const QString &formula);

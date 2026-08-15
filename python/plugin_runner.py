@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Load python-plugins/* and speak NDJSON with the Arbuz process."""
+"""Load plugins/* and speak NDJSON with the Arbuz process."""
 
 from __future__ import annotations
 

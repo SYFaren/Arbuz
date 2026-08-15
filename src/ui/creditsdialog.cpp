@@ -3,7 +3,6 @@
 #include "i18n.h"
 
 #include <QDialogButtonBox>
-#include <QFile>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QTextDocument>
@@ -14,7 +13,7 @@
 CreditsDialog::CreditsDialog(QWidget *parent)
     : QDialog(parent)
 {
-    setWindowTitle(I18n::t("Благодарности", "Credits"));
+    setWindowTitle(I18n::t("ui.credits"));
     setWindowIcon(ArbuzIcon::app());
     resize(680, 520);
 
@@ -28,8 +27,7 @@ CreditsDialog::CreditsDialog(QWidget *parent)
     titleRow->addWidget(iconLbl, 0, Qt::AlignTop);
 
     auto *titles = new QVBoxLayout();
-    auto *head = new QLabel(I18n::t("Arbuz — табличный калькулятор, SYFaren",
-                                   "Arbuz — table calculator, SYFaren"),
+    auto *head = new QLabel(I18n::t("ui.arbuz_table_calculator_syfaren"),
                            this);
     QFont f = head->font();
     f.setBold(true);
@@ -39,8 +37,7 @@ CreditsDialog::CreditsDialog(QWidget *parent)
     titles->addWidget(head);
 
     auto *sub = new QLabel(
-        I18n::t("Открытые проекты, без которых этой программы не было бы.",
-                "Open projects without which this program would not exist."),
+        I18n::t("ui.open_projects_without_which_this_program_would_not_exist"),
         this);
     sub->setWordWrap(true);
     titles->addWidget(sub);
@@ -52,16 +49,12 @@ CreditsDialog::CreditsDialog(QWidget *parent)
     text->setOpenExternalLinks(true);
     text->setOpenLinks(true);
     text->document()->setDocumentMargin(12);
-    QFile file(QStringLiteral(":/arbuz/CREDITS.md"));
-    QString md;
-    if (file.open(QIODevice::ReadOnly))
-        md = QString::fromUtf8(file.readAll());
-    text->setMarkdown(md);
+    text->setMarkdown(I18n::creditsMarkdown());
     lay->addWidget(text, 1);
 
     auto *box = new QDialogButtonBox(QDialogButtonBox::Ok, this);
     if (QPushButton *ok = box->button(QDialogButtonBox::Ok))
-        ok->setText(I18n::t("Закрыть", "Close"));
+        ok->setText(I18n::t("ui.close"));
     connect(box, &QDialogButtonBox::accepted, this, &QDialog::accept);
     lay->addWidget(box);
 }

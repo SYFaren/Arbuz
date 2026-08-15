@@ -2,6 +2,7 @@
 #include "cellref.h"
 #include "i18n.h"
 #include "numformat.h"
+#include "portable.h"
 #include "workbook.h"
 
 #include <QAction>
@@ -33,24 +34,23 @@ PluginHost::PluginHost(QObject *parent)
 
 QString PluginHost::portableRoot() const
 {
-    const QString env = QString::fromLocal8Bit(qgetenv("ARBUZ_PORTABLE_ROOT"));
-    if (!env.isEmpty())
-        return env;
-    QDir app(QCoreApplication::applicationDirPath());
-    if (QDir(app.filePath(QStringLiteral("python-plugins"))).exists())
-        return app.absolutePath();
-    if (QDir(app.filePath(QStringLiteral("../python-plugins"))).exists())
-        return QFileInfo(app.filePath(QStringLiteral(".."))).absoluteFilePath();
-    return app.absolutePath();
+    return Arbuz::portableRoot();
 }
 
 QString PluginHost::pluginsDir() const
 {
-    const QString portable = portableRoot() + QStringLiteral("/python-plugins");
-    if (QDir(portable).exists())
-        return portable;
-    const QString cfg = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
-        + QStringLiteral("/python-plugins");
+    const QString root = portableRoot();
+    const QString nextToApp = root + QStringLiteral("/plugins");
+    const QString legacy = root + QStringLiteral("/python-plugins");
+    if (QDir(nextToApp).exists())
+        return nextToApp;
+    if (QDir(legacy).exists())
+        return legacy;
+    const QString cfgBase = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    const QString cfg = cfgBase + QStringLiteral("/plugins");
+    const QString cfgLegacy = cfgBase + QStringLiteral("/python-plugins");
+    if (QDir(cfgLegacy).exists() && !QDir(cfg).exists())
+        return cfgLegacy;
     QDir().mkpath(cfg);
     return cfg;
 }
@@ -228,8 +228,8 @@ void PluginHost::applyRegistrations(const QJsonObject &msg)
             if (info.syntax.isEmpty())
                 info.syntax = info.name + QStringLiteral("()");
             info.category = QStringLiteral("plugin");
-            info.ruStr = f.value(QStringLiteral("help_ru")).toString();
-            info.enStr = f.value(QStringLiteral("help_en")).toString();
+            info.helpRuOverride = f.value(QStringLiteral("help_ru")).toString();
+            info.helpEnOverride = f.value(QStringLiteral("help_en")).toString();
             m_fns.append(info);
         }
     }
@@ -548,28 +548,28 @@ void PluginHost::fillMenu(QMenu *menu)
     if (!menu)
         return;
     menu->clear();
-    auto *reload = menu->addAction(I18n::t("Перезагрузить плагины", "Reload plugins"));
+    auto *reload = menu->addAction(I18n::t("ui.reload_plugins"));
     connect(reload, &QAction::triggered, this, [this]() { this->reload(); });
-    auto *open = menu->addAction(I18n::t("Открыть папку плагинов…", "Open plugins folder…"));
+    auto *open = menu->addAction(I18n::t("ui.open_plugins_folder"));
     connect(open, &QAction::triggered, this, [this]() {
         QDir().mkpath(pluginsDir());
         QDesktopServices::openUrl(QUrl::fromLocalFile(pluginsDir()));
     });
     menu->addSeparator();
     if (!running()) {
-        QString why = I18n::t("Python 3 не найден — плагины выключены", "Python 3 not found — plugins disabled");
+        QString why = I18n::t("ui.python_3_not_found_plugins_disabled");
         if (m_status == QLatin1String("no-runner"))
-            why = I18n::t("Не найден загрузчик плагинов", "Plugin runner not found");
+            why = I18n::t("ui.plugin_runner_not_found");
         else if (m_status == QLatin1String("disabled"))
-            why = I18n::t("Плагины отключены", "Plugins disabled");
+            why = I18n::t("ui.plugins_disabled");
         else if (m_status == QLatin1String("start-failed") || m_status == QLatin1String("timeout"))
-            why = I18n::t("Не удалось запустить Python-плагины", "Failed to start Python plugins");
+            why = I18n::t("ui.failed_to_start_python_plugins");
         auto *st = menu->addAction(why);
         st->setEnabled(false);
         return;
     }
     if (m_commands.isEmpty() && m_loaded.isEmpty()) {
-        auto *st = menu->addAction(I18n::t("Нет установленных плагинов", "No plugins installed"));
+        auto *st = menu->addAction(I18n::t("ui.no_plugins_installed"));
         st->setEnabled(false);
         return;
     }
@@ -590,7 +590,7 @@ void PluginHost::fillMenu(QMenu *menu)
     if (!m_loaded.isEmpty()) {
         menu->addSeparator();
         auto *info = menu->addAction(
-            I18n::t("Загружено: %1", "Loaded: %1").arg(m_loaded.join(QStringLiteral(", "))));
+            I18n::t("ui.loaded_1").arg(m_loaded.join(QStringLiteral(", "))));
         info->setEnabled(false);
     }
 }

@@ -56,8 +56,10 @@ API (модуль arbuz)
 Формулы плагина появляются в Вставка → Функция, категория «Плагины».
 В функции диапазон (VAT(A1:A3) или =MY(A1:B2)) приходит списком значений.
 
-Примеры: example-vat, example-hello, example-tools.
+Примеры лежат в исходниках Arbuz (`example-vat`, `example-hello`, `example-tools`), в portable-zip их нет.
 
 Переменные окружения:
-  ARBUZ_PYTHON     полный путь к python, если его нет в PATH
+  ARBUZ_PYTHON         полный путь к python, если его нет в PATH
   ARBUZ_NO_PLUGINS=1   не запускать хост (для тестов)
+
+English: see README.txt

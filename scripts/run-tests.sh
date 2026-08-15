@@ -28,9 +28,9 @@ run "python-plugin-protocol" python3 "${ROOT}/python/tests/test_plugin_protocol.
 run "python-compile" python3 -m py_compile \
   "${ROOT}/python/arbuz/__init__.py" \
   "${ROOT}/python/plugin_runner.py" \
-  "${ROOT}/python-plugins/example-vat/plugin.py" \
-  "${ROOT}/python-plugins/example-hello/plugin.py" \
-  "${ROOT}/python-plugins/example-tools/plugin.py"
+  "${ROOT}/plugins/example-vat/plugin.py" \
+  "${ROOT}/plugins/example-hello/plugin.py" \
+  "${ROOT}/plugins/example-tools/plugin.py"
 
 echo
 echo "======== icons ========"
@@ -54,7 +54,7 @@ path, launcher = sys.argv[1], sys.argv[2]
 z = zipfile.ZipFile(path)
 root = path.rsplit("/", 1)[-1].removesuffix(".zip") + "/"
 kids = sorted({p[len(root):].split("/")[0] for p in z.namelist() if p.startswith(root) and p != root})
-need = {launcher, "README.txt", "CREDITS.md", "python-plugins", "runtime"}
+need = {launcher, "README.txt", "README.ru.txt", "CREDITS.md", "CREDITS.ru.md", "plugins", "runtime", "languages", "themes"}
 missing = need - set(kids)
 if missing:
     print("FAIL zip missing", missing)

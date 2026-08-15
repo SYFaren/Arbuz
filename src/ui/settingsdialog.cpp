@@ -23,7 +23,7 @@
 SettingsDialog::SettingsDialog(QWidget *parent)
     : QDialog(parent)
 {
-    setWindowTitle(I18n::t("Настройки", "Settings"));
+    setWindowTitle(I18n::t("ui.settings_2"));
     setWindowIcon(ArbuzIcon::app());
     resize(540, 600);
 
@@ -33,16 +33,23 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     form->setHorizontalSpacing(12);
 
     m_lang = new QComboBox(this);
-    m_lang->addItem(QStringLiteral("Русский"), QStringLiteral("ru"));
-    m_lang->addItem(QStringLiteral("English"), QStringLiteral("en"));
-    m_lang->setCurrentIndex(I18n::lang() == QLatin1String("en") ? 1 : 0);
-    form->addRow(I18n::t("Язык", "Language"), m_lang);
+    {
+        const QString code = I18n::lang();
+        int cur = 0;
+        for (const auto &L : I18n::availableLanguages()) {
+            m_lang->addItem(L.name, L.code);
+            if (L.code == code)
+                cur = m_lang->count() - 1;
+        }
+        m_lang->setCurrentIndex(cur);
+    }
+    form->addRow(I18n::t("ui.language"), m_lang);
 
     auto *pathRow = new QWidget(this);
     auto *pathLay = new QHBoxLayout(pathRow);
     pathLay->setContentsMargins(0, 0, 0, 0);
     m_path = new QLineEdit(AppSettings::instance().documentsPath(), pathRow);
-    auto *browse = new QPushButton(I18n::t("Обзор…", "Browse…"), pathRow);
+    auto *browse = new QPushButton(I18n::t("ui.browse"), pathRow);
     connect(browse, &QPushButton::clicked, this, [this]() {
         const QString d = QFileDialog::getExistingDirectory(this, QString(), m_path->text());
         if (!d.isEmpty())
@@ -50,25 +57,25 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     });
     pathLay->addWidget(m_path, 1);
     pathLay->addWidget(browse);
-    form->addRow(I18n::t("Папка для файлов", "Documents folder"), pathRow);
+    form->addRow(I18n::t("ui.documents_folder"), pathRow);
 
     m_scale = new QSpinBox(this);
     m_scale->setRange(80, 160);
     m_scale->setSuffix(QStringLiteral(" %"));
     m_scale->setValue(AppSettings::instance().uiScalePercent());
-    form->addRow(I18n::t("Масштаб", "Scale"), m_scale);
+    form->addRow(I18n::t("ui.scale"), m_scale);
 
     auto *themeRow = new QWidget(this);
     auto *themeLay = new QHBoxLayout(themeRow);
     themeLay->setContentsMargins(0, 0, 0, 0);
     m_preset = new QComboBox(themeRow);
     Theme::fillPresetCombo(m_preset, AppSettings::instance().themePreset());
-    auto *saveAs = new QPushButton(I18n::t("Сохранить как…", "Save as…"), themeRow);
-    m_deleteTheme = new QPushButton(I18n::t("Удалить", "Delete"), themeRow);
+    auto *saveAs = new QPushButton(I18n::t("ui.save_as_3"), themeRow);
+    m_deleteTheme = new QPushButton(I18n::t("ui.delete"), themeRow);
     themeLay->addWidget(m_preset, 1);
     themeLay->addWidget(saveAs);
     themeLay->addWidget(m_deleteTheme);
-    form->addRow(I18n::t("Тема", "Theme"), themeRow);
+    form->addRow(I18n::t("ui.theme"), themeRow);
     m_deleteTheme->setEnabled(!Theme::isBuiltin(m_preset->currentData().toString()));
 
     connect(m_preset, &QComboBox::currentIndexChanged, this, [this]() {
@@ -81,8 +88,7 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     connect(m_deleteTheme, &QPushButton::clicked, this, &SettingsDialog::deleteTheme);
     lay->addLayout(form);
 
-    auto *colorsHint = new QLabel(I18n::t("Цвета. Изменения видны сразу. «Сохранить как…» создаёт свою тему.",
-                                         "Colors. Changes apply immediately. “Save as…” creates your theme."),
+    auto *colorsHint = new QLabel(I18n::t("ui.colors_changes_apply_immediately_save_as_creates_your_th"),
                                  this);
     colorsHint->setWordWrap(true);
     lay->addWidget(colorsHint);
@@ -107,9 +113,9 @@ SettingsDialog::SettingsDialog(QWidget *parent)
 
     auto *box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     if (QPushButton *ok = box->button(QDialogButtonBox::Ok))
-        ok->setText(I18n::t("OK", "OK"));
+        ok->setText(I18n::t("ui.ok"));
     if (QPushButton *cancel = box->button(QDialogButtonBox::Cancel))
-        cancel->setText(I18n::t("Отмена", "Cancel"));
+        cancel->setText(I18n::t("ui.cancel"));
     connect(box, &QDialogButtonBox::accepted, this, &SettingsDialog::save);
     connect(box, &QDialogButtonBox::rejected, this, &QDialog::reject);
     lay->addWidget(box);
@@ -169,15 +175,15 @@ void SettingsDialog::saveAsTheme()
 {
     bool ok = false;
     const QString title = QInputDialog::getText(
-        this, I18n::t("Новая тема", "New theme"),
-        I18n::t("Название", "Name"), QLineEdit::Normal,
-        I18n::t("Моя тема", "My theme"), &ok);
+        this, I18n::t("ui.new_theme"),
+        I18n::t("ui.name_2"), QLineEdit::Normal,
+        I18n::t("ui.my_theme"), &ok);
     if (!ok || title.trimmed().isEmpty())
         return;
     const QString id = Theme::saveUserTheme(title.trimmed(), swatchPalette());
     if (id.isEmpty()) {
         QMessageBox::warning(this, QStringLiteral("Arbuz"),
-                             I18n::t("Не удалось сохранить тему.", "Could not save the theme."));
+                             I18n::t("ui.could_not_save_the_theme"));
         return;
     }
     Theme::applyPreset(id);
@@ -193,7 +199,7 @@ void SettingsDialog::deleteTheme()
     if (Theme::isBuiltin(id))
         return;
     if (QMessageBox::question(this, QStringLiteral("Arbuz"),
-                              I18n::t("Удалить тему «%1»?", "Delete theme “%1”?").arg(Theme::presetTitle(id)))
+                              I18n::t("ui.delete_theme_1").arg(Theme::presetTitle(id)))
         != QMessageBox::Yes)
         return;
     Theme::deleteUserTheme(id);
@@ -206,11 +212,18 @@ void SettingsDialog::deleteTheme()
 
 void SettingsDialog::save()
 {
-    AppSettings::instance().setLanguage(m_lang->currentData().toString());
+    const QString oldLang = I18n::lang();
+    const QString newLang = m_lang->currentData().toString();
+    AppSettings::instance().setLanguage(newLang);
     AppSettings::instance().setDocumentsPath(m_path->text());
     AppSettings::instance().setUiScalePercent(m_scale->value());
     AppSettings::instance().setThemePreset(m_preset->currentData().toString());
     Theme::apply(qApp);
     emit themeChanged();
+    if (oldLang != newLang) {
+        QMessageBox::information(
+            this, QStringLiteral("Arbuz"),
+            I18n::t("ui.menu_language_will_apply_after_you_restart_arbuz"));
+    }
     accept();
 }

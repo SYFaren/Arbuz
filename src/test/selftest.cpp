@@ -572,11 +572,27 @@ static void testThemeAndI18n()
        QStringLiteral("stylesheet generated"));
     eq(Theme::idFromTitle(QStringLiteral("Моя тема")), QStringLiteral("моя-тема"), "idFromTitle");
 
+    {
+        QTemporaryDir tmp;
+        qputenv("ARBUZ_PORTABLE_ROOT", tmp.path().toUtf8());
+        const QString themes = Theme::userThemesDir();
+        ok(themes.startsWith(tmp.path()) && themes.endsWith(QStringLiteral("themes")),
+           QStringLiteral("portable themes dir"));
+        qunsetenv("ARBUZ_PORTABLE_ROOT");
+    }
+
     const QString old = I18n::lang();
     I18n::setLang(QStringLiteral("en"));
-    eq(I18n::t("Файл", "File"), QStringLiteral("File"), "i18n en");
+    eq(I18n::t("ui.file"), QStringLiteral("File"), "i18n en");
     I18n::setLang(QStringLiteral("ru"));
-    eq(I18n::t("Файл", "File"), QStringLiteral("Файл"), "i18n ru");
+    eq(I18n::t("ui.file"), QStringLiteral("Файл"), "i18n ru");
+    ok(I18n::creditsId() == QLatin1String("ru"), QStringLiteral("credits id ru"));
+    ok(I18n::creditsMarkdown().contains(QStringLiteral("табличный")),
+       QStringLiteral("credits markdown ru"));
+    I18n::setLang(QStringLiteral("en"));
+    ok(I18n::creditsId() == QLatin1String("en"), QStringLiteral("credits id en"));
+    ok(I18n::creditsMarkdown().contains(QStringLiteral("table calculator")),
+       QStringLiteral("credits markdown en"));
     I18n::setLang(old);
 }
 
@@ -602,7 +618,7 @@ static void testPluginBridge()
     info.name = QStringLiteral("DOUBLE");
     info.syntax = QStringLiteral("DOUBLE(n)");
     info.category = QStringLiteral("plugin");
-    info.ruStr = QStringLiteral("удвоение");
+    info.helpRuOverride = QStringLiteral("удвоение");
     FormulaEngine::setPluginBridge(
         [](const QString &name, const QVector<FormulaArg> &args) {
             if (name != QLatin1String("DOUBLE") || args.isEmpty())
@@ -620,7 +636,7 @@ static void testPluginBridge()
 static void testPythonPlugins()
 {
     QTemporaryDir tmp;
-    const QString plug = tmp.filePath(QStringLiteral("python-plugins/probe"));
+    const QString plug = tmp.filePath(QStringLiteral("plugins/probe"));
     QDir().mkpath(plug);
     QFile f(plug + QStringLiteral("/plugin.py"));
     ok(f.open(QIODevice::WriteOnly | QIODevice::Text), QStringLiteral("write probe plugin"));
@@ -674,6 +690,8 @@ int runSelfTest()
 {
     g_fails = 0;
     g_ok = 0;
+    // Contract and UI strings in this suite are Russian-locale fixtures.
+    I18n::setLang(QStringLiteral("ru"));
     testCellRef();
     testWorkbookSheets();
     testFormulas();

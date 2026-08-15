@@ -82,6 +82,7 @@ int runUiTest()
     QDir().mkpath(QStringLiteral("ui-test-out"));
     const QString out = QDir(QStringLiteral("ui-test-out")).absolutePath();
 
+    I18n::setLang(QStringLiteral("ru"));
     Theme::applyPreset(QStringLiteral("white"));
     Theme::apply(qApp);
 

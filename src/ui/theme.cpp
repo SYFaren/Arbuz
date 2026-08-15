@@ -1,10 +1,10 @@
 #include "theme.h"
 #include "appsettings.h"
 #include "i18n.h"
+#include "portable.h"
 
 #include <QApplication>
 #include <QComboBox>
-#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -99,7 +99,14 @@ QStringList Theme::builtinIds()
 
 QString Theme::userThemesDir()
 {
-    const QString portable = QCoreApplication::applicationDirPath() + QStringLiteral("/themes");
+    const QByteArray env = qgetenv("ARBUZ_PORTABLE_ROOT");
+    if (!env.isEmpty()) {
+        const QString d = QString::fromLocal8Bit(env) + QStringLiteral("/themes");
+        QDir().mkpath(d);
+        return d;
+    }
+    const QString root = Arbuz::portableRoot();
+    const QString portable = root + QStringLiteral("/themes");
     if (QDir(portable).exists())
         return portable;
     const QString cfg = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
@@ -154,11 +161,11 @@ bool Theme::isBuiltin(const QString &id)
 QString Theme::presetTitle(const QString &id)
 {
     if (id == QLatin1String("dark"))
-        return I18n::t("Тёмная", "Dark");
+        return I18n::t("ui.dark");
     if (id == QLatin1String("arbuz"))
-        return I18n::t("Арбуз", "Watermelon");
+        return I18n::t("ui.watermelon");
     if (id == QLatin1String("white"))
-        return I18n::t("Белая", "White");
+        return I18n::t("ui.white");
     QFile f(userThemesDir() + QLatin1Char('/') + id + QStringLiteral(".json"));
     if (f.open(QIODevice::ReadOnly)) {
         const QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
@@ -191,13 +198,11 @@ QHash<QString, QColor> Theme::paletteFor(const QString &id)
         for (auto it = p.begin(); it != p.end(); ++it)
             it.value() = jsonColor(o, it.key(), it.value());
     }
-    if (!isBuiltin(id)) {
-        QFile f(userThemesDir() + QLatin1Char('/') + id + QStringLiteral(".json"));
-        if (f.open(QIODevice::ReadOnly)) {
-            const QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
-            for (auto it = p.begin(); it != p.end(); ++it)
-                it.value() = jsonColor(o, it.key(), it.value());
-        }
+    QFile disk(userThemesDir() + QLatin1Char('/') + id + QStringLiteral(".json"));
+    if (disk.open(QIODevice::ReadOnly)) {
+        const QJsonObject o = QJsonDocument::fromJson(disk.readAll()).object();
+        for (auto it = p.begin(); it != p.end(); ++it)
+            it.value() = jsonColor(o, it.key(), it.value());
     }
     if (!p.contains(QStringLiteral("selectionBorder")))
         p.insert(QStringLiteral("selectionBorder"), p.value(QStringLiteral("flesh")));
@@ -216,31 +221,9 @@ QStringList Theme::colorRoles()
 
 QString Theme::roleTitle(const QString &role)
 {
-    static const QHash<QString, QPair<const char *, const char *>> titles = {
-        {QStringLiteral("flesh"), {"Акцент", "Accent"}},
-        {QStringLiteral("fleshHot"), {"Акцент яркий", "Accent highlight"}},
-        {QStringLiteral("rind"), {"Заголовки", "Headers"}},
-        {QStringLiteral("rindStripe"), {"Рамка заголовков", "Header edge"}},
-        {QStringLiteral("seed"), {"Текст", "Text"}},
-        {QStringLiteral("pith"), {"Ячейки", "Cells"}},
-        {QStringLiteral("windowBg"), {"Фон окна", "Window"}},
-        {QStringLiteral("headerText"), {"Текст заголовков", "Header text"}},
-        {QStringLiteral("gridLine"), {"Линии сетки", "Grid lines"}},
-        {QStringLiteral("selection"), {"Выделение", "Selection"}},
-        {QStringLiteral("selectionText"), {"Текст выделения", "Selection text"}},
-        {QStringLiteral("selectionBorder"), {"Рамка выделения", "Selection border"}},
-        {QStringLiteral("formulaBar"), {"Поля ввода", "Input fields"}},
-        {QStringLiteral("button"), {"Кнопка", "Button"}},
-        {QStringLiteral("buttonText"), {"Текст кнопки", "Button text"}},
-        {QStringLiteral("tabActive"), {"Активная вкладка", "Active tab"}},
-        {QStringLiteral("tabInactive"), {"Неактивная вкладка", "Inactive tab"}},
-        {QStringLiteral("menuBg"), {"Меню", "Menu"}},
-        {QStringLiteral("statusBg"), {"Статус", "Status"}},
-    };
-    const auto it = titles.find(role);
-    if (it == titles.end())
-        return role;
-    return I18n::t(it->first, it->second);
+    const QString key = QStringLiteral("theme.role.") + role;
+    const QString title = I18n::t(key);
+    return title == key ? role : title;
 }
 
 QHash<QString, QColor> Theme::currentPalette()

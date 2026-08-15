@@ -1,6 +1,7 @@
 #include "appsettings.h"
 
 #include <QDir>
+#include <QLocale>
 #include <QStandardPaths>
 
 AppSettings &AppSettings::instance()
@@ -26,7 +27,11 @@ void AppSettings::setFirstRunDone(bool done)
 
 QString AppSettings::language() const
 {
-    return m_s.value(QStringLiteral("language"), QStringLiteral("ru")).toString();
+    if (m_s.contains(QStringLiteral("language")))
+        return m_s.value(QStringLiteral("language")).toString();
+    // First launch / unset: follow the OS UI language (RU → ru, everything else → en).
+    return QLocale::system().language() == QLocale::Russian ? QStringLiteral("ru")
+                                                            : QStringLiteral("en");
 }
 
 void AppSettings::setLanguage(const QString &code)

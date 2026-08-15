@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # Cross-builds a Windows portable zip (MinGW + Qt win64_mingw).
 #
-# Zip root (easy to find the exe):
+# User (edit these):
 #   Arbuz.exe          — launcher, no Qt DLLs
-#   README.txt
-#   CREDITS.md
-#   python-plugins/    — user Python plugins
+#   README.txt / README.ru.txt
+#   CREDITS.md / CREDITS.ru.md
+#   languages/         — UI languages + credits.*.md
+#   themes/            — color themes (add *.json)
+#   plugins/           — Python plugins
+#
+# Program (do not touch):
 #   runtime/           — engine.exe + Qt + python-host
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -84,9 +88,10 @@ ZLIB_A="$(find "${ZBUILD}" -name 'libzlibstatic.a' -o -name 'libz.a' | head -1)"
 mkdir -p "${RUNTIME}/qt-plugins/platforms" \
   "${RUNTIME}/qt-plugins/imageformats" \
   "${RUNTIME}/qt-plugins/styles" \
-  "${RUNTIME}/themes" \
   "${RUNTIME}/python-host" \
-  "${OUT}/python-plugins"
+  "${OUT}/plugins" \
+  "${OUT}/languages" \
+  "${OUT}/themes"
 
 LAUNCHER="${BUILD}/arbuz-launcher.exe"
 ENGINE="${BUILD}/arbuz.exe"
@@ -114,10 +119,15 @@ done
 cp -a "${QT_WIN}/plugins/platforms/qwindows.dll" "${RUNTIME}/qt-plugins/platforms/"
 cp -a "${QT_WIN}/plugins/imageformats/"*.dll "${RUNTIME}/qt-plugins/imageformats/" 2>/dev/null || true
 cp -a "${QT_WIN}/plugins/styles/"*.dll "${RUNTIME}/qt-plugins/styles/" 2>/dev/null || true
-cp -a "${ROOT}/resources/themes/"*.json "${RUNTIME}/themes/"
+cp -a "${ROOT}/resources/themes/"*.json "${OUT}/themes/"
+cp -a "${ROOT}/resources/i18n/"*.json "${OUT}/languages/"
+cp -a "${ROOT}/CREDITS.md" "${OUT}/languages/credits.en.md"
+cp -a "${ROOT}/CREDITS.ru.md" "${OUT}/languages/credits.ru.md"
 cp -a "${ROOT}/python/." "${RUNTIME}/python-host/"
-cp -a "${ROOT}/python-plugins/." "${OUT}/python-plugins/"
+mkdir -p "${OUT}/plugins"
+cp -a "${ROOT}/plugins/README.txt" "${ROOT}/plugins/README.ru.txt" "${OUT}/plugins/"
 cp -a "${ROOT}/CREDITS.md" "${OUT}/CREDITS.md"
+cp -a "${ROOT}/CREDITS.ru.md" "${OUT}/CREDITS.ru.md"
 
 cat > "${RUNTIME}/qt.conf" << 'EOF'
 [Paths]
@@ -125,22 +135,49 @@ Plugins = qt-plugins
 EOF
 
 cat > "${OUT}/README.txt" << 'EOF'
-Arbuz — табличный калькулятор, portable Windows (x86_64)
-Создатель: SYFaren
+Arbuz — table calculator
+portable Windows (x86_64)
+
+════════════════════════════════════
+  RUN:  Arbuz.exe   (this file in the folder root)
+════════════════════════════════════
+
+Yours (edit freely):
+  plugins/          Python plugins (system Python 3 required)
+  languages/        UI languages — copy en.json to de.json and translate
+                    In _meta set "credits":"en" (or "de") and add credits.de.md
+  themes/           Color themes — copy a json, change colors, pick it in Settings
+  CREDITS.md        English credits (Help → Credits)
+  CREDITS.ru.md     Russian credits
+
+Program (leave closed):
+  runtime/          Engine, Qt DLLs, python-host
+                    Do not run runtime\engine.exe directly.
+
+Russian: see README.ru.txt
+EOF
+
+cat > "${OUT}/README.ru.txt" << 'EOF'
+Arbuz — табличный калькулятор
+portable Windows (x86_64)
 
 ════════════════════════════════════
   ЗАПУСК:  Arbuz.exe   (этот файл в корне папки)
 ════════════════════════════════════
 
-Не открывайте папку runtime — там Qt, DLL и движок.
-Не запускайте runtime\engine.exe напрямую.
+Ваше (можно править):
+  plugins/          плагины Python (нужен system Python 3)
+  languages/        языки интерфейса — скопируйте en.json в de.json и переведите
+                    в _meta укажите "credits":"en" (или "de") и добавьте credits.de.md
+  themes/           темы — скопируйте json, поменяйте цвета, выберите в Настройках
+  CREDITS.md        благодарности на английском (Справка → Благодарности)
+  CREDITS.ru.md     благодарности на русском
 
-Плагины Python: папка python-plugins рядом с Arbuz.exe.
-Нужен Python 3 в системе (в архив не входит, чтобы zip был маленьким).
-Меню «Плагины» → «Открыть папку плагинов…»
+Программа (не трогать):
+  runtime/          движок, DLL Qt, python-host
+                    Не запускайте runtime\engine.exe напрямую.
 
-Темы: Белая, Тёмная, Арбуз. Свои — Вид → Настройки → Сохранить как…
-(файлы тем пишутся в runtime\themes).
+English: see README.txt
 EOF
 
 python3 - << PY

@@ -1,5 +1,6 @@
 #include "fileio.h"
 #include "cellref.h"
+#include "i18n.h"
 #include "numformat.h"
 #include "workbook.h"
 
@@ -640,14 +641,14 @@ bool FileIo::loadXlsx(Workbook *wb, const QString &path, QString *error)
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly)) {
         if (error)
-            *error = QStringLiteral("Не удалось открыть xlsx");
+            *error = I18n::t("ui.could_not_open_xlsx");
         return false;
     }
     const QHash<QString, QByteArray> files = unzipAll(f.readAll());
     const QByteArray wbXml = files.value(QStringLiteral("xl/workbook.xml"));
     if (wbXml.isEmpty()) {
         if (error)
-            *error = QStringLiteral("Некорректный xlsx");
+            *error = I18n::t("ui.invalid_xlsx");
         return false;
     }
     const auto rels = parseRels(files.value(QStringLiteral("xl/_rels/workbook.xml.rels")));
@@ -674,7 +675,7 @@ bool FileIo::loadXlsx(Workbook *wb, const QString &path, QString *error)
         else if (!target.startsWith(QLatin1String("xl/")))
             target = QStringLiteral("xl/") + target;
         Worksheet ws;
-        ws.name = name.isEmpty() ? QStringLiteral("Лист%1").arg(loaded.size() + 1) : name;
+        ws.name = name.isEmpty() ? I18n::t("ui.sheet_1").arg(loaded.size() + 1) : name;
         parseSheetXml(files.value(target), &ws, shared, xfs);
         loaded.append(ws);
     }
@@ -765,7 +766,7 @@ bool FileIo::saveXlsx(Workbook *wb, const QString &path, QString *error)
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly)) {
         if (error)
-            *error = QStringLiteral("Не удалось сохранить xlsx");
+            *error = I18n::t("ui.could_not_save_xlsx");
         return false;
     }
     f.write(packed);
@@ -843,7 +844,7 @@ bool FileIo::loadCsv(Workbook *wb, const QString &path, QString *error)
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         if (error)
-            *error = QStringLiteral("Не удалось открыть csv");
+            *error = I18n::t("ui.could_not_open_csv");
         return false;
     }
     wb->resetToEmpty();
@@ -874,7 +875,7 @@ bool FileIo::saveCsv(Workbook *wb, const QString &path, QString *error)
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
         if (error)
-            *error = QStringLiteral("Не удалось сохранить csv");
+            *error = I18n::t("ui.could_not_save_csv");
         return false;
     }
     QTextStream out(&f);

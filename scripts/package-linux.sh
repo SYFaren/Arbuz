@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # Linux portable zip.
 #
-# Zip root (easy to find the launcher):
+# User (edit these):
 #   Arbuz.sh           — start here
-#   README.txt
-#   CREDITS.md
-#   python-plugins/    — user Python plugins
-#   runtime/           — binary, lib, Qt plugins, python-host
+#   README.txt / README.ru.txt
+#   CREDITS.md / CREDITS.ru.md
+#   languages/         — UI languages + credits.*.md
+#   themes/            — color themes (add *.json)
+#   plugins/           — Python plugins
+#
+# Program (do not touch):
+#   runtime/           — binary, Qt, python-host
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 QT="${HOME}/Qt/6.5.3/gcc_64"
@@ -22,7 +26,6 @@ mkdir -p "${RUNTIME}/lib" \
   "${RUNTIME}/qt-plugins/imageformats" \
   "${RUNTIME}/qt-plugins/platformthemes" \
   "${RUNTIME}/qt-plugins/xcbglintegrations" \
-  "${RUNTIME}/themes" \
   "${RUNTIME}/python-host" \
   "${RUNTIME}/icons/hicolor/16x16/apps" \
   "${RUNTIME}/icons/hicolor/24x24/apps" \
@@ -31,9 +34,10 @@ mkdir -p "${RUNTIME}/lib" \
   "${RUNTIME}/icons/hicolor/64x64/apps" \
   "${RUNTIME}/icons/hicolor/128x128/apps" \
   "${RUNTIME}/icons/hicolor/256x256/apps" \
-  "${RUNTIME}/icons/hicolor/512x512/apps" \
   "${RUNTIME}/icons/hicolor/scalable/apps" \
-  "${OUT}/python-plugins"
+  "${OUT}/plugins" \
+  "${OUT}/languages" \
+  "${OUT}/themes"
 
 cp -a "${ROOT}/build/arbuz" "${RUNTIME}/arbuz"
 chmod +x "${RUNTIME}/arbuz"
@@ -93,14 +97,19 @@ if [[ -f "${RUNTIME}/qt-plugins/platforms/libqxcb.so" ]]; then
   done
 fi
 
-cp -a "${ROOT}/resources/themes/"*.json "${RUNTIME}/themes/"
+cp -a "${ROOT}/resources/themes/"*.json "${OUT}/themes/"
+cp -a "${ROOT}/resources/i18n/"*.json "${OUT}/languages/"
+cp -a "${ROOT}/CREDITS.md" "${OUT}/languages/credits.en.md"
+cp -a "${ROOT}/CREDITS.ru.md" "${OUT}/languages/credits.ru.md"
 cp -a "${ROOT}/python/." "${RUNTIME}/python-host/"
-cp -a "${ROOT}/python-plugins/." "${OUT}/python-plugins/"
+mkdir -p "${OUT}/plugins"
+cp -a "${ROOT}/plugins/README.txt" "${ROOT}/plugins/README.ru.txt" "${OUT}/plugins/"
 cp -a "${ROOT}/CREDITS.md" "${OUT}/CREDITS.md"
+cp -a "${ROOT}/CREDITS.ru.md" "${OUT}/CREDITS.ru.md"
 cp -a "${ROOT}/resources/arbuz.desktop" "${RUNTIME}/arbuz.desktop"
 cp -a "${ROOT}/resources/icons/arbuz-256.png" "${RUNTIME}/arbuz.png"
 cp -a "${ROOT}/resources/icons/arbuz.svg" "${RUNTIME}/icons/hicolor/scalable/apps/arbuz.svg"
-for sz in 16 24 32 48 64 128 256 512; do
+for sz in 16 24 32 48 64 128 256; do
   cp -a "${ROOT}/resources/icons/arbuz-${sz}.png" "${RUNTIME}/icons/hicolor/${sz}x${sz}/apps/arbuz.png"
 done
 
@@ -122,24 +131,53 @@ EOF
 chmod +x "${OUT}/Arbuz.sh"
 
 cat > "${OUT}/README.txt" << 'EOF'
-Arbuz — табличный калькулятор, portable Linux (x86_64)
-Создатель: SYFaren
+Arbuz — table calculator
+portable Linux (x86_64)
+
+════════════════════════════════════
+  RUN:  ./Arbuz.sh   (this file in the folder root)
+════════════════════════════════════
+
+Yours (edit freely):
+  plugins/          Python plugins (system python3 required)
+  languages/        UI languages — copy en.json to de.json and translate
+                    In _meta set "credits":"en" (or "de") and add credits.de.md
+  themes/           Color themes — copy a json, change colors, pick it in Settings
+  CREDITS.md        English credits (Help → Credits)
+  CREDITS.ru.md     Russian credits
+
+Program (leave closed):
+  runtime/          Engine, Qt libraries, python-host
+
+Needs a normal glibc Linux. Fonts from /usr/share/fonts.
+
+Formulas: Insert → Function, or right-click a cell.
+Russian: see README.ru.txt
+EOF
+
+cat > "${OUT}/README.ru.txt" << 'EOF'
+Arbuz — табличный калькулятор
+portable Linux (x86_64)
 
 ════════════════════════════════════
   ЗАПУСК:  ./Arbuz.sh   (этот файл в корне папки)
 ════════════════════════════════════
 
-Не открывайте папку runtime — там библиотеки Qt.
+Ваше (можно править):
+  plugins/          плагины Python (нужен system python3)
+  languages/        языки интерфейса — скопируйте en.json в de.json и переведите
+                    в _meta укажите "credits":"en" (или "de") и добавьте credits.de.md
+  themes/           темы — скопируйте json, поменяйте цвета, выберите в Настройках
+  CREDITS.md        благодарности на английском (Справка → Благодарности)
+  CREDITS.ru.md     благодарности на русском
+
+Программа (не трогать):
+  runtime/          движок, библиотеки Qt, python-host
+
 Нужна обычная Linux-система с glibc. Шрифты — из /usr/share/fonts.
 
-Плагины Python: папка python-plugins рядом с Arbuz.sh.
-Нужен python3 в системе (в архив не входит).
-Меню «Плагины» → «Открыть папку плагинов…»
-
-Темы: Белая, Тёмная, Арбуз.
-Свои темы: Вид → Настройки → Сохранить как… (runtime/themes).
-
 Формулы: Вставка → Функция, или правый щелчок по ячейке.
+English: see README.txt
 EOF
 
 (

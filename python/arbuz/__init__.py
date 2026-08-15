@@ -3,7 +3,7 @@
 Talks to the desktop app over stdin/stdout (NDJSON). Plugin authors only
 use this module — never speak the wire protocol directly.
 
-Minimal plugin (python-plugins/my-plugin/plugin.py)::
+Minimal plugin (plugins/my-plugin/plugin.py)::
 
     import arbuz
 

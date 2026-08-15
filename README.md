@@ -1,34 +1,45 @@
 # Arbuz
 
-**Табличный калькулятор** для **Windows 10/11** и **Linux (glibc)**.
-Создатель: **SYFaren**.
+[Русский](README.ru.md)
 
-Стек: Qt 6 Widgets, C++17, CMake. Русский интерфейс по умолчанию, темы (белая, тёмная, арбузная), portable zip.
+**Table calculator** for **Windows 10/11** and **Linux (x86_64, glibc)**.  
+License: [MIT](LICENSE).
 
-Исходники в `src/`: `app/`, `core/`, `formula/`, `io/`, `ui/`, `plugins/`, `test/`.
+A grid that calculates: numbers and formulas in cells, results on screen. Not Excel and not LibreOffice Calc — no charts, pivots, ODS, or collaboration.
 
-Первая электронная таблица называлась VisiCalc — от *visible calculator*, «видимый калькулятор»: считаешь в сетке, и результаты сразу на экране. Arbuz развивается в ту же сторону, а не как программа для управления таблицами (фильтры, сводные, вёрстка отчётов, графики).
+The first spreadsheet was VisiCalc (*visible calculator*). Arbuz follows that idea: a calculator with a grid for memory, not a report engine.
 
-Пишешь числа и формулы в ячейки — сетка помнит и пересчитывает. Зарплата, доля, личный учёт: то, для чего достаточно калькулятора с памятью, а не Excel. Сводные таблицы, диаграммы, ODS и совместное редактирование в программу не входят.
+## Features
 
-## Что умеет
+- Multiple sheets, formula bar, undo, insert rows/columns
+- 74 functions (`SUM`, `SUMIFS`, `IF`, `VLOOKUP`, `TODAY`, …), cross-sheet references
+- Decimal comma and percents: `1,5`, `25%`, `=A1*0,13`
+- Fill handle, Ctrl+D / Ctrl+R, Find (F3), print
+- Own `.xlsx` and `.csv` (round-trip keeps styles, merges, freeze panes)
+- Themes: white, dark, watermelon
+- Plugins on system Python 3 (interpreter is not bundled)
 
-- Сетка A/B/C, несколько листов, строка формул, отмена правок и вставки строк/столбцов
-- Формулы: 74 функции каталога (`SUM`, `SUMIFS`, `IF`, `VLOOKUP`, `TODAY`, …), ссылки на другие листы, даты как в Excel
-- В ячейку можно писать `1,5` и `25%`; в формулах аргументы через запятую (`POWER(2,10)`), десятичная запятая вне вызова функции (`=1,5+2`, `=A1*0,13`)
-- Маркер заполнения (числа — серия, формулы — сдвиг ссылок), поиск F3 / Shift+F3, Ctrl+стрелки, Ctrl+Home/End
-- Закрепление областей, объединение, сортировка, печать, выравнивание, границы, числовые форматы Excel (`numFmtId`)
-- Плагины на системном Python 3: свои функции и команды меню
+## Download / portable build
 
-## Файлы
+Ready-to-run zips (Windows and Linux) are on the [Releases](https://github.com/SYFaren/Arbuz/releases) page.
 
-Свои `.xlsx` и `.csv`. Книга, которую записал Arbuz, должна открыться обратно без потери листов, формул, стилей, объединения, закрепления и ширин столбцов — это проверяет `--self-test` (контракт `xlsx2`).
+To build a portable zip from source:
 
-Чужой файл из Excel/Calc Arbuz читает как подмножество: гиперссылки, комментарии, имена, автофильтр, картинки и проверка данных не сохраняются.
+```bash
+./scripts/package-linux.sh      # → dist/Arbuz-linux-x86_64.zip
+./scripts/package-windows.sh    # → dist/Arbuz-windows-x86_64.zip  (needs MinGW/Qt for Windows)
+```
 
-## Сборка
+After unpacking:
 
-Нужны Qt 6 (Widgets + PrintSupport) и CMake ≥ 3.16.
+- **Windows:** run `Arbuz.exe` in the folder root (not `runtime\engine.exe`)
+- **Linux:** run `./Arbuz.sh` in the folder root
+
+`README.txt`, `README.ru.txt`, `CREDITS.md`, `CREDITS.ru.md`, `languages/`, `themes/`, and `plugins/` sit next to the launcher. The engine and Qt live under `runtime/` — leave that folder alone.
+
+## Build from source
+
+Requires **Qt 6** (Widgets + PrintSupport), **CMake ≥ 3.16**, and **zlib**.
 
 ```bash
 cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x/gcc_64
@@ -36,38 +47,36 @@ cmake --build build -j
 ./build/arbuz
 ```
 
-На этой машине Qt 6.5.3 лежит в `~/Qt/6.5.3/gcc_64`:
+Linux helper (adjust Qt path if needed): [`scripts/build.sh`](scripts/build.sh).
+
+Tests:
 
 ```bash
-./scripts/build.sh
-export LD_LIBRARY_PATH="$HOME/Qt/6.5.3/gcc_64/lib:${LD_LIBRARY_PATH:-}"
-./build/arbuz
-```
-
-Проверки:
-
-```bash
-./build/arbuz --self-test          # формулы, xlsx-контракт, плагины
+./build/arbuz --self-test
 QT_QPA_PLATFORM=offscreen ./build/arbuz --ui-test
-./scripts/run-tests.sh            # сборка + self/ui + Python + иконки + zip
+./scripts/run-tests.sh
 ```
 
-При первом запуске — мастер (язык, папка, масштаб) со статичной шуткой «Какой же SYFaren прекрасный». Тема по умолчанию арбузная; цвета меняются в **Вид → Настройки**.
+UI language follows the system on first run (Russian or English) and can be changed in **View → Settings**. Strings live in `resources/i18n/*.json` and ship as `languages/` next to the portable launcher; add another `xx.json` there to translate without rebuilding.
 
-## Плагины Python
+## Plugins
 
-Папка `python-plugins/` рядом с программой (в portable — рядом с `Arbuz.exe` / `Arbuz.sh`, не внутри `runtime/`). Нужен системный Python 3; в архив он не кладётся. Документация и примеры — в `python-plugins/README.txt`. Меню **Плагины**.
+Put plugins in `plugins/` next to the app (next to the launcher in portable builds, not inside `runtime/`). Needs Python 3 on `PATH`. See [`plugins/README.txt`](plugins/README.txt) / [`plugins/README.ru.txt`](plugins/README.ru.txt). Menu: **Plugins**.
 
-## Portable
+## Repository layout
 
-`scripts/package-linux.sh` и `scripts/package-windows.sh` собирают zip, в корне которого только запускатель:
+| Path | Role |
+|------|------|
+| `src/app/` | Entry point, main window, Windows launcher |
+| `src/core/` | Workbook, grid, refs, number formats |
+| `src/formula/` | Formula engine |
+| `src/io/` | xlsx / csv |
+| `src/ui/` | Themes, dialogs, i18n |
+| `src/plugins/` | Python plugin host |
+| `src/test/` | `--self-test`, `--ui-test` |
+| `scripts/` | Build, tests, portable zip |
+| `third_party/` | Attribution (QXlsx is not linked; xlfparser is header-only) |
 
-- Windows: `Arbuz.exe` (крошечный C-лаунчер без Qt; движок — `runtime/engine.exe`)
-- Linux: `Arbuz.sh`
+## Credits
 
-Рядом `README.txt`, `CREDITS.md`, `python-plugins/`. Все DLL/so Qt лежат в `runtime/`.
-
-## Заимствования
-
-Код и подходы взяты из открытых репозиториев GitHub и доработаны под Arbuz.
-Полный список — в [CREDITS.md](CREDITS.md) и в программе: **Справка → Благодарности**.
+Open-source projects used as references are listed in [CREDITS.md](CREDITS.md) (English) and [CREDITS.ru.md](CREDITS.ru.md) (Russian), and in the app under **Help → Credits**. A language JSON may set `"credits"` in `_meta` to pick which document to show (or reuse English).

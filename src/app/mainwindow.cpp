@@ -103,7 +103,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_addSheetBtn->setIconSize(QSize(14, 14));
     m_addSheetBtn->setText(QString());
     m_addSheetBtn->setAccessibleName(QStringLiteral("+"));
-    m_addSheetBtn->setToolTip(I18n::t("Добавить лист", "Add sheet"));
+    m_addSheetBtn->setToolTip(I18n::t("ui.add_sheet"));
     m_addSheetBtn->setAutoRaise(true);
     m_addSheetBtn->setFocusPolicy(Qt::NoFocus);
     m_addSheetBtn->setFixedSize(24, 22);
@@ -139,74 +139,74 @@ MainWindow::MainWindow(QWidget *parent)
         return act;
     };
 
-    auto *fileMenu = menuBar()->addMenu(I18n::t("Файл", "File"));
-    iconize(fileMenu->addAction(I18n::t("Создать", "New"), QKeySequence::New, this, &MainWindow::newFile),
+    auto *fileMenu = menuBar()->addMenu(I18n::t("ui.file"));
+    iconize(fileMenu->addAction(I18n::t("ui.new"), QKeySequence::New, this, &MainWindow::newFile),
             QStringLiteral("new"));
-    iconize(fileMenu->addAction(I18n::t("Открыть…", "Open…"), QKeySequence::Open, this, &MainWindow::openFile),
+    iconize(fileMenu->addAction(I18n::t("ui.open"), QKeySequence::Open, this, &MainWindow::openFile),
             QStringLiteral("open"));
-    iconize(fileMenu->addAction(I18n::t("Сохранить", "Save"), QKeySequence::Save, this, &MainWindow::saveFile),
+    iconize(fileMenu->addAction(I18n::t("ui.save"), QKeySequence::Save, this, &MainWindow::saveFile),
             QStringLiteral("save"));
-    iconize(fileMenu->addAction(I18n::t("Сохранить как…", "Save As…"), QKeySequence::SaveAs, this, &MainWindow::saveFileAs),
+    iconize(fileMenu->addAction(I18n::t("ui.save_as"), QKeySequence::SaveAs, this, &MainWindow::saveFileAs),
             QStringLiteral("save-as"));
-    iconize(fileMenu->addAction(I18n::t("Печать…", "Print…"), QKeySequence::Print, this, &MainWindow::printSheet),
+    iconize(fileMenu->addAction(I18n::t("ui.print"), QKeySequence::Print, this, &MainWindow::printSheet),
             QStringLiteral("save"));
     fileMenu->addSeparator();
-    iconize(fileMenu->addAction(I18n::t("Выход", "Quit"), QKeySequence::Quit, this, &QWidget::close),
+    iconize(fileMenu->addAction(I18n::t("ui.quit"), QKeySequence::Quit, this, &QWidget::close),
             QStringLiteral("quit"));
 
-    auto *editMenu = menuBar()->addMenu(I18n::t("Правка", "Edit"));
-    QAction *undoAct = m_wb->undoStack()->createUndoAction(this, I18n::t("Отменить", "Undo"));
+    auto *editMenu = menuBar()->addMenu(I18n::t("ui.edit"));
+    QAction *undoAct = m_wb->undoStack()->createUndoAction(this, I18n::t("ui.undo"));
     undoAct->setShortcut(QKeySequence::Undo);
     undoAct->setIcon(ArbuzIcon::named(QStringLiteral("clear")));
     undoAct->setIconVisibleInMenu(true);
     editMenu->addAction(undoAct);
-    QAction *redoAct = m_wb->undoStack()->createRedoAction(this, I18n::t("Повторить", "Redo"));
+    QAction *redoAct = m_wb->undoStack()->createRedoAction(this, I18n::t("ui.redo"));
     redoAct->setShortcut(QKeySequence::Redo);
     redoAct->setIcon(ArbuzIcon::named(QStringLiteral("clear")));
     redoAct->setIconVisibleInMenu(true);
     editMenu->addAction(redoAct);
     editMenu->addSeparator();
-    iconize(editMenu->addAction(I18n::t("Вырезать", "Cut"), QKeySequence::Cut, this, &MainWindow::cut),
+    iconize(editMenu->addAction(I18n::t("ui.cut"), QKeySequence::Cut, this, &MainWindow::cut),
             QStringLiteral("cut"));
-    iconize(editMenu->addAction(I18n::t("Копировать", "Copy"), QKeySequence::Copy, this, &MainWindow::copy),
+    iconize(editMenu->addAction(I18n::t("ui.copy"), QKeySequence::Copy, this, &MainWindow::copy),
             QStringLiteral("copy"));
-    iconize(editMenu->addAction(I18n::t("Вставить", "Paste"), QKeySequence::Paste, this, &MainWindow::paste),
+    iconize(editMenu->addAction(I18n::t("ui.paste"), QKeySequence::Paste, this, &MainWindow::paste),
             QStringLiteral("paste"));
-    iconize(editMenu->addAction(I18n::t("Очистить", "Clear"), QKeySequence::Delete, this, &MainWindow::clearContents),
+    iconize(editMenu->addAction(I18n::t("ui.clear"), QKeySequence::Delete, this, &MainWindow::clearContents),
             QStringLiteral("clear"));
     editMenu->addSeparator();
-    iconize(editMenu->addAction(I18n::t("Заполнить вниз", "Fill down"), QKeySequence(QStringLiteral("Ctrl+D")), this,
+    iconize(editMenu->addAction(I18n::t("ui.fill_down"), QKeySequence(QStringLiteral("Ctrl+D")), this,
                                &MainWindow::fillDown),
             QStringLiteral("goto"));
-    iconize(editMenu->addAction(I18n::t("Заполнить вправо", "Fill right"), QKeySequence(QStringLiteral("Ctrl+R")), this,
+    iconize(editMenu->addAction(I18n::t("ui.fill_right"), QKeySequence(QStringLiteral("Ctrl+R")), this,
                                &MainWindow::fillRight),
             QStringLiteral("goto"));
     editMenu->addSeparator();
-    iconize(editMenu->addAction(I18n::t("Найти…", "Find…"), QKeySequence::Find, this, &MainWindow::findCell),
+    iconize(editMenu->addAction(I18n::t("ui.find"), QKeySequence::Find, this, &MainWindow::findCell),
             QStringLiteral("find"));
-    iconize(editMenu->addAction(I18n::t("Найти далее", "Find next"), QKeySequence(QStringLiteral("F3")), this,
+    iconize(editMenu->addAction(I18n::t("ui.find_next"), QKeySequence(QStringLiteral("F3")), this,
                                &MainWindow::findNextCell),
             QStringLiteral("find"));
-    iconize(editMenu->addAction(I18n::t("Найти ранее", "Find previous"), QKeySequence(QStringLiteral("Shift+F3")), this,
+    iconize(editMenu->addAction(I18n::t("ui.find_previous"), QKeySequence(QStringLiteral("Shift+F3")), this,
                                &MainWindow::findPrevCell),
             QStringLiteral("find"));
-    iconize(editMenu->addAction(I18n::t("Заменить…", "Replace…"), QKeySequence::Replace, this, &MainWindow::replaceCell),
+    iconize(editMenu->addAction(I18n::t("ui.replace"), QKeySequence::Replace, this, &MainWindow::replaceCell),
             QStringLiteral("find"));
-    iconize(editMenu->addAction(I18n::t("Перейти к ячейке…", "Go to cell…"), QKeySequence(QStringLiteral("Ctrl+G")),
+    iconize(editMenu->addAction(I18n::t("ui.go_to_cell"), QKeySequence(QStringLiteral("Ctrl+G")),
                                this, &MainWindow::goToCell),
             QStringLiteral("goto"));
     editMenu->addSeparator();
-    iconize(editMenu->addAction(I18n::t("Вставить строки", "Insert rows"), this, &MainWindow::insertRows),
+    iconize(editMenu->addAction(I18n::t("ui.insert_rows"), this, &MainWindow::insertRows),
             QStringLiteral("add-sheet"));
-    iconize(editMenu->addAction(I18n::t("Вставить столбцы", "Insert columns"), this, &MainWindow::insertColumns),
+    iconize(editMenu->addAction(I18n::t("ui.insert_columns"), this, &MainWindow::insertColumns),
             QStringLiteral("add-sheet"));
-    iconize(editMenu->addAction(I18n::t("Удалить строки", "Delete rows"), this, &MainWindow::removeRows),
+    iconize(editMenu->addAction(I18n::t("ui.delete_rows"), this, &MainWindow::removeRows),
             QStringLiteral("delete-sheet"));
-    iconize(editMenu->addAction(I18n::t("Удалить столбцы", "Delete columns"), this, &MainWindow::removeColumns),
+    iconize(editMenu->addAction(I18n::t("ui.delete_columns"), this, &MainWindow::removeColumns),
             QStringLiteral("delete-sheet"));
 
-    auto *insertMenu = menuBar()->addMenu(I18n::t("Вставка", "Insert"));
-    iconize(insertMenu->addAction(I18n::t("Функция…", "Function…"), this, &MainWindow::showFunctionDialog),
+    auto *insertMenu = menuBar()->addMenu(I18n::t("ui.insert"));
+    iconize(insertMenu->addAction(I18n::t("ui.function"), this, &MainWindow::showFunctionDialog),
             QStringLiteral("fx"));
     insertMenu->addSeparator();
     for (const QString &name : QStringList{QStringLiteral("SUM"), QStringLiteral("AVERAGE"),
@@ -219,106 +219,106 @@ MainWindow::MainWindow(QWidget *parent)
         connect(act, &QAction::triggered, this, [this, name]() { insertFunction(name); });
     }
 
-    auto *fmtMenu = menuBar()->addMenu(I18n::t("Формат", "Format"));
-    iconize(fmtMenu->addAction(I18n::t("Жирный", "Bold"), QKeySequence::Bold, this, &MainWindow::toggleBold),
+    auto *fmtMenu = menuBar()->addMenu(I18n::t("ui.format"));
+    iconize(fmtMenu->addAction(I18n::t("ui.bold"), QKeySequence::Bold, this, &MainWindow::toggleBold),
             QStringLiteral("bold"));
-    iconize(fmtMenu->addAction(I18n::t("Курсив", "Italic"), QKeySequence::Italic, this, &MainWindow::toggleItalic),
+    iconize(fmtMenu->addAction(I18n::t("ui.italic"), QKeySequence::Italic, this, &MainWindow::toggleItalic),
             QStringLiteral("italic"));
-    iconize(fmtMenu->addAction(I18n::t("Цвет текста…", "Text color…"), this, &MainWindow::setTextColor),
+    iconize(fmtMenu->addAction(I18n::t("ui.text_color"), this, &MainWindow::setTextColor),
             QStringLiteral("text-color"));
-    iconize(fmtMenu->addAction(I18n::t("Цвет фона…", "Fill color…"), this, &MainWindow::setFillColor),
+    iconize(fmtMenu->addAction(I18n::t("ui.fill_color"), this, &MainWindow::setFillColor),
             QStringLiteral("fill-color"));
     fmtMenu->addSeparator();
-    iconize(fmtMenu->addAction(I18n::t("По левому краю", "Align left"), this, &MainWindow::alignLeft),
+    iconize(fmtMenu->addAction(I18n::t("ui.align_left"), this, &MainWindow::alignLeft),
             QStringLiteral("goto"));
-    iconize(fmtMenu->addAction(I18n::t("По центру", "Align center"), this, &MainWindow::alignCenter),
+    iconize(fmtMenu->addAction(I18n::t("ui.align_center"), this, &MainWindow::alignCenter),
             QStringLiteral("goto"));
-    iconize(fmtMenu->addAction(I18n::t("По правому краю", "Align right"), this, &MainWindow::alignRight),
+    iconize(fmtMenu->addAction(I18n::t("ui.align_right"), this, &MainWindow::alignRight),
             QStringLiteral("goto"));
-    iconize(fmtMenu->addAction(I18n::t("Перенос по словам", "Wrap text"), this, &MainWindow::toggleWrap),
+    iconize(fmtMenu->addAction(I18n::t("ui.wrap_text"), this, &MainWindow::toggleWrap),
             QStringLiteral("italic"));
-    iconize(fmtMenu->addAction(I18n::t("Границы", "Borders"), this, &MainWindow::toggleBorder),
+    iconize(fmtMenu->addAction(I18n::t("ui.borders"), this, &MainWindow::toggleBorder),
             QStringLiteral("fill-color"));
     fmtMenu->addSeparator();
-    auto *numMenu = fmtMenu->addMenu(I18n::t("Числовой формат", "Number format"));
-    iconize(numMenu->addAction(I18n::t("Обычный", "General"), this, &MainWindow::setNumFmtGeneral),
+    auto *numMenu = fmtMenu->addMenu(I18n::t("ui.number_format"));
+    iconize(numMenu->addAction(I18n::t("ui.general"), this, &MainWindow::setNumFmtGeneral),
             QStringLiteral("fx"));
-    iconize(numMenu->addAction(I18n::t("Число (0.00)", "Number (0.00)"), this, &MainWindow::setNumFmtNumber),
+    iconize(numMenu->addAction(I18n::t("ui.number_0_00"), this, &MainWindow::setNumFmtNumber),
             QStringLiteral("fx"));
-    iconize(numMenu->addAction(I18n::t("С разрядами (#,##0.00)", "Thousands (#,##0.00)"), this,
+    iconize(numMenu->addAction(I18n::t("ui.thousands_0_00"), this,
                                &MainWindow::setNumFmtThousands),
             QStringLiteral("fx"));
-    iconize(numMenu->addAction(I18n::t("Процент", "Percent"), this, &MainWindow::setNumFmtPercent),
+    iconize(numMenu->addAction(I18n::t("ui.percent"), this, &MainWindow::setNumFmtPercent),
             QStringLiteral("fx"));
-    iconize(numMenu->addAction(I18n::t("Процент (0.00%)", "Percent (0.00%)"), this, &MainWindow::setNumFmtPercent2),
+    iconize(numMenu->addAction(I18n::t("ui.percent_0_00"), this, &MainWindow::setNumFmtPercent2),
             QStringLiteral("fx"));
-    iconize(numMenu->addAction(I18n::t("Научный", "Scientific"), this, &MainWindow::setNumFmtScientific),
+    iconize(numMenu->addAction(I18n::t("ui.scientific"), this, &MainWindow::setNumFmtScientific),
             QStringLiteral("fx"));
-    iconize(numMenu->addAction(I18n::t("Дата", "Date"), this, &MainWindow::setNumFmtDate), QStringLiteral("fx"));
-    iconize(numMenu->addAction(I18n::t("Дата и время", "Date and time"), this, &MainWindow::setNumFmtDateTime),
+    iconize(numMenu->addAction(I18n::t("ui.date"), this, &MainWindow::setNumFmtDate), QStringLiteral("fx"));
+    iconize(numMenu->addAction(I18n::t("ui.date_and_time"), this, &MainWindow::setNumFmtDateTime),
             QStringLiteral("fx"));
-    iconize(numMenu->addAction(I18n::t("Время", "Time"), this, &MainWindow::setNumFmtTime), QStringLiteral("fx"));
+    iconize(numMenu->addAction(I18n::t("ui.time"), this, &MainWindow::setNumFmtTime), QStringLiteral("fx"));
     fmtMenu->addSeparator();
-    iconize(fmtMenu->addAction(I18n::t("Объединить ячейки", "Merge cells"), this, &MainWindow::mergeSelection),
+    iconize(fmtMenu->addAction(I18n::t("ui.merge_cells"), this, &MainWindow::mergeSelection),
             QStringLiteral("add-sheet"));
-    iconize(fmtMenu->addAction(I18n::t("Разъединить", "Unmerge"), this, &MainWindow::unmergeSelection),
+    iconize(fmtMenu->addAction(I18n::t("ui.unmerge"), this, &MainWindow::unmergeSelection),
             QStringLiteral("delete-sheet"));
 
-    auto *sheetMenu = menuBar()->addMenu(I18n::t("Лист", "Sheet"));
-    iconize(sheetMenu->addAction(I18n::t("Вставить лист", "Insert sheet"), this, &MainWindow::addSheet),
+    auto *sheetMenu = menuBar()->addMenu(I18n::t("ui.sheet"));
+    iconize(sheetMenu->addAction(I18n::t("ui.insert_sheet"), this, &MainWindow::addSheet),
             QStringLiteral("add-sheet"));
-    iconize(sheetMenu->addAction(I18n::t("Удалить лист", "Delete sheet"), this, &MainWindow::removeSheet),
+    iconize(sheetMenu->addAction(I18n::t("ui.delete_sheet"), this, &MainWindow::removeSheet),
             QStringLiteral("delete-sheet"));
-    iconize(sheetMenu->addAction(I18n::t("Переименовать лист…", "Rename sheet…"), this, &MainWindow::renameSheet),
+    iconize(sheetMenu->addAction(I18n::t("ui.rename_sheet"), this, &MainWindow::renameSheet),
             QStringLiteral("rename-sheet"));
 
-    auto *viewMenu = menuBar()->addMenu(I18n::t("Вид", "View"));
-    m_themeMenu = viewMenu->addMenu(ArbuzIcon::named(QStringLiteral("theme")), I18n::t("Тема", "Theme"));
+    auto *viewMenu = menuBar()->addMenu(I18n::t("ui.view"));
+    m_themeMenu = viewMenu->addMenu(ArbuzIcon::named(QStringLiteral("theme")), I18n::t("ui.theme"));
     m_themeGroup = new QActionGroup(this);
     m_themeGroup->setExclusive(true);
     rebuildThemeMenu();
     viewMenu->addSeparator();
-    iconize(viewMenu->addAction(I18n::t("Закрепить области", "Freeze panes"), this, &MainWindow::freezePanes),
+    iconize(viewMenu->addAction(I18n::t("ui.freeze_panes"), this, &MainWindow::freezePanes),
             QStringLiteral("goto"));
-    iconize(viewMenu->addAction(I18n::t("Снять закрепление", "Unfreeze panes"), this, &MainWindow::unfreezePanes),
+    iconize(viewMenu->addAction(I18n::t("ui.unfreeze_panes"), this, &MainWindow::unfreezePanes),
             QStringLiteral("goto"));
-    iconize(viewMenu->addAction(I18n::t("Сортировка А→Я", "Sort A→Z"), this, &MainWindow::sortAsc),
+    iconize(viewMenu->addAction(I18n::t("ui.sort_a_z"), this, &MainWindow::sortAsc),
             QStringLiteral("goto"));
-    iconize(viewMenu->addAction(I18n::t("Сортировка Я→А", "Sort Z→A"), this, &MainWindow::sortDesc),
+    iconize(viewMenu->addAction(I18n::t("ui.sort_z_a"), this, &MainWindow::sortDesc),
             QStringLiteral("goto"));
     viewMenu->addSeparator();
-    iconize(viewMenu->addAction(I18n::t("Настройки…", "Settings…"), this, &MainWindow::showSettings),
+    iconize(viewMenu->addAction(I18n::t("ui.settings"), this, &MainWindow::showSettings),
             QStringLiteral("settings"));
 
-    auto *plugMenu = menuBar()->addMenu(I18n::t("Плагины", "Plugins"));
+    auto *plugMenu = menuBar()->addMenu(I18n::t("ui.plugins"));
     plugMenu->setObjectName(QStringLiteral("pluginsMenu"));
     connect(plugMenu, &QMenu::aboutToShow, this, [plugMenu]() { PluginHost::instance().fillMenu(plugMenu); });
 
-    auto *helpMenu = menuBar()->addMenu(I18n::t("Справка", "Help"));
-    iconize(helpMenu->addAction(I18n::t("Благодарности", "Credits"), this, &MainWindow::showCredits),
+    auto *helpMenu = menuBar()->addMenu(I18n::t("ui.help"));
+    iconize(helpMenu->addAction(I18n::t("ui.credits"), this, &MainWindow::showCredits),
             QStringLiteral("credits"));
-    iconize(helpMenu->addAction(I18n::t("Первичная настройка…", "First-run setup…"), this, &MainWindow::showFirstRun),
+    iconize(helpMenu->addAction(I18n::t("ui.first_run_setup"), this, &MainWindow::showFirstRun),
             QStringLiteral("wizard"));
-    iconize(helpMenu->addAction(I18n::t("О программе", "About"), this, &MainWindow::showAbout),
+    iconize(helpMenu->addAction(I18n::t("ui.about"), this, &MainWindow::showAbout),
             QStringLiteral("about"));
 
-    m_toolbar = addToolBar(I18n::t("Главная", "Main"));
+    m_toolbar = addToolBar(I18n::t("ui.main"));
     m_toolbar->setObjectName(QStringLiteral("mainToolBar"));
     m_toolbar->setMovable(false);
     m_toolbar->setIconSize(QSize(20, 20));
-    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("new")), I18n::t("Создать", "New"), this, &MainWindow::newFile);
-    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("open")), I18n::t("Открыть", "Open"), this, &MainWindow::openFile);
-    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("save")), I18n::t("Сохранить", "Save"), this, &MainWindow::saveFile);
+    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("new")), I18n::t("ui.new"), this, &MainWindow::newFile);
+    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("open")), I18n::t("ui.open_2"), this, &MainWindow::openFile);
+    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("save")), I18n::t("ui.save"), this, &MainWindow::saveFile);
     m_toolbar->addSeparator();
     m_toolbar->addAction(undoAct);
     m_toolbar->addAction(redoAct);
     m_toolbar->addSeparator();
-    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("cut")), I18n::t("Вырезать", "Cut"), this, &MainWindow::cut);
-    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("copy")), I18n::t("Копировать", "Copy"), this, &MainWindow::copy);
-    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("paste")), I18n::t("Вставить", "Paste"), this, &MainWindow::paste);
+    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("cut")), I18n::t("ui.cut"), this, &MainWindow::cut);
+    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("copy")), I18n::t("ui.copy"), this, &MainWindow::copy);
+    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("paste")), I18n::t("ui.paste"), this, &MainWindow::paste);
     m_toolbar->addSeparator();
-    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("bold")), I18n::t("Жирный", "Bold"), this, &MainWindow::toggleBold);
-    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("italic")), I18n::t("Курсив", "Italic"), this, &MainWindow::toggleItalic);
+    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("bold")), I18n::t("ui.bold"), this, &MainWindow::toggleBold);
+    m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("italic")), I18n::t("ui.italic"), this, &MainWindow::toggleItalic);
     m_toolbar->addSeparator();
     m_toolbar->addAction(ArbuzIcon::named(QStringLiteral("fx")), QStringLiteral("SUM"), this, [this]() {
         insertFunction(QStringLiteral("SUM"));
@@ -428,7 +428,7 @@ QMenu *MainWindow::functionMenu(QWidget *parent)
     }
     menu->addSeparator();
     auto *all = menu->addAction(ArbuzIcon::named(QStringLiteral("fx")),
-                                I18n::t("Все функции…", "All functions…"), this, &MainWindow::showFunctionDialog);
+                                I18n::t("ui.all_functions"), this, &MainWindow::showFunctionDialog);
     all->setIconVisibleInMenu(true);
     return menu;
 }
@@ -577,20 +577,20 @@ void MainWindow::cellContextMenu(const QPoint &pos)
         act->setIconVisibleInMenu(true);
         return act;
     };
-    add(QStringLiteral("cut"), I18n::t("Вырезать", "Cut"), &MainWindow::cut);
-    add(QStringLiteral("copy"), I18n::t("Копировать", "Copy"), &MainWindow::copy);
-    add(QStringLiteral("paste"), I18n::t("Вставить", "Paste"), &MainWindow::paste);
-    add(QStringLiteral("clear"), I18n::t("Очистить", "Clear"), &MainWindow::clearContents);
+    add(QStringLiteral("cut"), I18n::t("ui.cut"), &MainWindow::cut);
+    add(QStringLiteral("copy"), I18n::t("ui.copy"), &MainWindow::copy);
+    add(QStringLiteral("paste"), I18n::t("ui.paste"), &MainWindow::paste);
+    add(QStringLiteral("clear"), I18n::t("ui.clear"), &MainWindow::clearContents);
     menu.addSeparator();
     QMenu *fnMenu = functionMenu(&menu);
-    fnMenu->setTitle(I18n::t("Функция", "Function"));
+    fnMenu->setTitle(I18n::t("ui.function_2"));
     fnMenu->setIcon(ArbuzIcon::named(QStringLiteral("fx")));
     menu.addMenu(fnMenu);
     menu.addSeparator();
-    add(QStringLiteral("bold"), I18n::t("Жирный", "Bold"), &MainWindow::toggleBold);
-    add(QStringLiteral("italic"), I18n::t("Курсив", "Italic"), &MainWindow::toggleItalic);
-    add(QStringLiteral("text-color"), I18n::t("Цвет текста…", "Text color…"), &MainWindow::setTextColor);
-    add(QStringLiteral("fill-color"), I18n::t("Цвет фона…", "Fill color…"), &MainWindow::setFillColor);
+    add(QStringLiteral("bold"), I18n::t("ui.bold"), &MainWindow::toggleBold);
+    add(QStringLiteral("italic"), I18n::t("ui.italic"), &MainWindow::toggleItalic);
+    add(QStringLiteral("text-color"), I18n::t("ui.text_color"), &MainWindow::setTextColor);
+    add(QStringLiteral("fill-color"), I18n::t("ui.fill_color"), &MainWindow::setFillColor);
     menu.exec(m_view->viewport()->mapToGlobal(pos));
 }
 
@@ -602,14 +602,14 @@ void MainWindow::sheetTabContextMenu(const QPoint &pos)
 
     QMenu menu(this);
     auto *ins = menu.addAction(ArbuzIcon::named(QStringLiteral("add-sheet")),
-                               I18n::t("Вставить лист", "Insert sheet"), this, &MainWindow::addSheet);
+                               I18n::t("ui.insert_sheet"), this, &MainWindow::addSheet);
     ins->setIconVisibleInMenu(true);
     auto *del = menu.addAction(ArbuzIcon::named(QStringLiteral("delete-sheet")),
-                               I18n::t("Удалить лист", "Delete sheet"), this, &MainWindow::removeSheet);
+                               I18n::t("ui.delete_sheet"), this, &MainWindow::removeSheet);
     del->setIconVisibleInMenu(true);
     del->setEnabled(m_wb->sheetCount() > 1);
     auto *ren = menu.addAction(ArbuzIcon::named(QStringLiteral("rename-sheet")),
-                               I18n::t("Переименовать…", "Rename…"), this, &MainWindow::renameSheet);
+                               I18n::t("ui.rename"), this, &MainWindow::renameSheet);
     ren->setIconVisibleInMenu(true);
     menu.exec(m_tabs->mapToGlobal(pos));
 }
@@ -637,7 +637,7 @@ void MainWindow::updateStatus()
                 }
             }
             if (n > 0) {
-                extra = I18n::t("    Σ %1    ср %2    n %3", "    Σ %1    avg %2    n %3")
+                extra = I18n::t("ui.1_avg_2_n_3")
                             .arg(QString::number(sum, 'g', 12), QString::number(sum / n, 'g', 12),
                                  QString::number(n));
             }
@@ -667,9 +667,8 @@ void MainWindow::openFile()
         return;
     // GTK/portal on Linux mishandles "(*.xlsx *.csv)"; one pattern per filter.
     const QString path = QFileDialog::getOpenFileName(
-        this, I18n::t("Открыть", "Open"), AppSettings::instance().documentsPath(),
-        I18n::t("Arbuz (*.xlsx);;CSV (*.csv);;Все файлы (*)",
-                "Arbuz (*.xlsx);;CSV (*.csv);;All files (*)"));
+        this, I18n::t("ui.open_2"), AppSettings::instance().documentsPath(),
+        I18n::t("ui.arbuz_xlsx_csv_csv_all_files"));
     if (path.isEmpty())
         return;
     openPath(path);
@@ -711,8 +710,8 @@ bool MainWindow::saveFile()
 bool MainWindow::saveFileAs()
 {
     const QString path = QFileDialog::getSaveFileName(
-        this, I18n::t("Сохранить как", "Save as"), AppSettings::instance().documentsPath(),
-        I18n::t("Arbuz (*.xlsx);;CSV (*.csv)", "Arbuz (*.xlsx);;CSV (*.csv)"));
+        this, I18n::t("ui.save_as_2"), AppSettings::instance().documentsPath(),
+        I18n::t("ui.arbuz_xlsx_csv_csv"));
     if (path.isEmpty())
         return false;
     m_path = path;
@@ -735,10 +734,10 @@ bool MainWindow::confirmSave()
         return true;
     QMessageBox box(this);
     box.setWindowTitle(QStringLiteral("Arbuz"));
-    box.setText(I18n::t("Сохранить изменения?", "Save changes?"));
-    auto *yes = box.addButton(I18n::t("Да", "Yes"), QMessageBox::YesRole);
-    box.addButton(I18n::t("Нет", "No"), QMessageBox::NoRole);
-    auto *cancel = box.addButton(I18n::t("Отмена", "Cancel"), QMessageBox::RejectRole);
+    box.setText(I18n::t("ui.save_changes"));
+    auto *yes = box.addButton(I18n::t("ui.yes"), QMessageBox::YesRole);
+    box.addButton(I18n::t("ui.no"), QMessageBox::NoRole);
+    auto *cancel = box.addButton(I18n::t("ui.cancel"), QMessageBox::RejectRole);
     box.setDefaultButton(yes);
     box.exec();
     if (box.clickedButton() == cancel)
@@ -796,7 +795,7 @@ void MainWindow::paste()
     const int dRow = m_copyHasOrigin ? r0 - m_copyRow : 0;
     const int dCol = m_copyHasOrigin ? c0 - m_copyCol : 0;
     const QStringList rows = text.split(QLatin1Char('\n'));
-    m_wb->beginUndoMacro(I18n::t("Вставка", "Paste"));
+    m_wb->beginUndoMacro(I18n::t("ui.paste_2"));
     for (int i = 0; i < rows.size(); ++i) {
         if (rows.at(i).isEmpty() && i == rows.size() - 1)
             continue;
@@ -829,8 +828,8 @@ void MainWindow::clearContents()
 void MainWindow::findCell()
 {
     bool ok = false;
-    const QString needle = QInputDialog::getText(this, I18n::t("Найти", "Find"),
-                                                 I18n::t("Текст", "Text"), QLineEdit::Normal, m_findNeedle, &ok);
+    const QString needle = QInputDialog::getText(this, I18n::t("ui.find_2"),
+                                                 I18n::t("ui.text"), QLineEdit::Normal, m_findNeedle, &ok);
     if (!ok || needle.isEmpty() || currentSheet() < 0)
         return;
     m_findNeedle = needle;
@@ -839,7 +838,7 @@ void MainWindow::findCell()
     if (m_wb->findNext(currentSheet(), m_findNeedle, 0, -1, &r, &c, false))
         revealCell(r, c);
     else
-        statusBar()->showMessage(I18n::t("Не найдено", "Not found"), 3000);
+        statusBar()->showMessage(I18n::t("ui.not_found"), 3000);
 }
 
 void MainWindow::findNextCell()
@@ -861,7 +860,7 @@ void MainWindow::findNextCell()
     if (m_wb->findNext(currentSheet(), m_findNeedle, fr, fc, &r, &c, true))
         revealCell(r, c);
     else
-        statusBar()->showMessage(I18n::t("Не найдено", "Not found"), 3000);
+        statusBar()->showMessage(I18n::t("ui.not_found"), 3000);
 }
 
 void MainWindow::findPrevCell()
@@ -883,7 +882,7 @@ void MainWindow::findPrevCell()
     if (m_wb->findPrev(currentSheet(), m_findNeedle, fr, fc, &r, &c, true))
         revealCell(r, c);
     else
-        statusBar()->showMessage(I18n::t("Не найдено", "Not found"), 3000);
+        statusBar()->showMessage(I18n::t("ui.not_found"), 3000);
 }
 
 void MainWindow::revealCell(int row, int col)
@@ -900,7 +899,7 @@ void MainWindow::revealCell(int row, int col)
 void MainWindow::goToCell()
 {
     bool ok = false;
-    const QString ref = QInputDialog::getText(this, I18n::t("Перейти", "Go to"),
+    const QString ref = QInputDialog::getText(this, I18n::t("ui.go_to"),
                                               QStringLiteral("A1"), QLineEdit::Normal, {}, &ok);
     if (!ok || ref.trimmed().isEmpty() || !m_view)
         return;
@@ -920,7 +919,7 @@ void MainWindow::applyStyleToSelection(bool doBold, bool doItalic, bool setFg, c
     if (!m_view)
         return;
     const int sh = currentSheet();
-    m_wb->beginUndoMacro(I18n::t("Формат", "Format"));
+    m_wb->beginUndoMacro(I18n::t("ui.format"));
     for (const QModelIndex &i : m_view->selectionModel()->selectedIndexes()) {
         CellData d = m_wb->sheet(sh).cell(i.row(), i.column());
         const bool bold = doBold ? !d.bold : d.bold;
@@ -970,14 +969,14 @@ void MainWindow::removeSheet()
     if (sh < 0)
         return;
     if (m_wb->sheetCount() <= 1) {
-        statusBar()->showMessage(I18n::t("Нельзя удалить последний лист", "Cannot delete the last sheet"), 3000);
+        statusBar()->showMessage(I18n::t("ui.cannot_delete_the_last_sheet"), 3000);
         return;
     }
     QMessageBox box(this);
     box.setWindowTitle(QStringLiteral("Arbuz"));
-    box.setText(I18n::t("Удалить лист «%1»?", "Delete sheet “%1”?").arg(m_wb->sheet(sh).name));
-    auto *yes = box.addButton(I18n::t("Да", "Yes"), QMessageBox::YesRole);
-    box.addButton(I18n::t("Нет", "No"), QMessageBox::NoRole);
+    box.setText(I18n::t("ui.delete_sheet_1").arg(m_wb->sheet(sh).name));
+    auto *yes = box.addButton(I18n::t("ui.yes"), QMessageBox::YesRole);
+    box.addButton(I18n::t("ui.no"), QMessageBox::NoRole);
     box.setDefaultButton(yes);
     box.exec();
     if (box.clickedButton() != yes)
@@ -991,8 +990,8 @@ void MainWindow::renameSheet()
     if (sh < 0)
         return;
     bool ok = false;
-    const QString n = QInputDialog::getText(this, I18n::t("Лист", "Sheet"),
-                                            I18n::t("Имя", "Name"), QLineEdit::Normal,
+    const QString n = QInputDialog::getText(this, I18n::t("ui.sheet"),
+                                            I18n::t("ui.name"), QLineEdit::Normal,
                                             m_wb->sheet(sh).name, &ok);
     if (ok)
         m_wb->renameSheet(sh, n);
@@ -1026,15 +1025,8 @@ void MainWindow::showCredits()
 void MainWindow::showAbout()
 {
     QMessageBox::about(
-        this, I18n::t("О программе", "About"),
-        I18n::t("Arbuz — табличный калькулятор\nСоздатель: SYFaren\nWindows 10/11 и Linux (glibc)\n\n"
-                "Числа в ячейках, формулы пересчитываются сами.\n"
-                "Как VisiCalc: visible calculator, не Excel.\n\n"
-                "См. Справка → Благодарности",
-                "Arbuz — table calculator\nCreated by SYFaren\nWindows 10/11 and Linux (glibc)\n\n"
-                "Numbers in cells, formulas recalculate themselves.\n"
-                "VisiCalc meant visible calculator, not Excel.\n\n"
-                "See Help → Credits"));
+        this, I18n::t("ui.about"),
+        I18n::t("ui.about_text"));
 }
 
 void MainWindow::selectedBounds(int *r1, int *c1, int *r2, int *c2) const
@@ -1192,7 +1184,7 @@ void MainWindow::unmergeSelection()
 void MainWindow::applyAlign(int hAlign)
 {
     const int sh = currentSheet();
-    m_wb->beginUndoMacro(I18n::t("Выравнивание", "Alignment"));
+    m_wb->beginUndoMacro(I18n::t("ui.alignment"));
     for (const QModelIndex &i : m_view->selectionModel()->selectedIndexes()) {
         CellData d = m_wb->sheet(sh).cell(i.row(), i.column());
         d.hAlign = hAlign;
@@ -1217,7 +1209,7 @@ void MainWindow::alignRight()
 void MainWindow::toggleWrap()
 {
     const int sh = currentSheet();
-    m_wb->beginUndoMacro(I18n::t("Перенос", "Wrap"));
+    m_wb->beginUndoMacro(I18n::t("ui.wrap"));
     for (const QModelIndex &i : m_view->selectionModel()->selectedIndexes()) {
         CellData d = m_wb->sheet(sh).cell(i.row(), i.column());
         d.wrap = !d.wrap;
@@ -1229,7 +1221,7 @@ void MainWindow::toggleWrap()
 void MainWindow::applyNumFmt(int fmt)
 {
     const int sh = currentSheet();
-    m_wb->beginUndoMacro(I18n::t("Числовой формат", "Number format"));
+    m_wb->beginUndoMacro(I18n::t("ui.number_format"));
     for (const QModelIndex &i : m_view->selectionModel()->selectedIndexes()) {
         CellData d = m_wb->sheet(sh).cell(i.row(), i.column());
         d.numFmt = fmt;
@@ -1278,7 +1270,7 @@ void MainWindow::setNumFmtTime()
 void MainWindow::toggleBorder()
 {
     const int sh = currentSheet();
-    m_wb->beginUndoMacro(I18n::t("Границы", "Borders"));
+    m_wb->beginUndoMacro(I18n::t("ui.borders"));
     for (const QModelIndex &i : m_view->selectionModel()->selectedIndexes()) {
         CellData d = m_wb->sheet(sh).cell(i.row(), i.column());
         d.border = d.border ? 0 : 15;
@@ -1324,16 +1316,16 @@ void MainWindow::onTabMoved(int from, int to)
 void MainWindow::replaceCell()
 {
     bool ok = false;
-    const QString needle = QInputDialog::getText(this, I18n::t("Заменить", "Replace"),
-                                                 I18n::t("Найти", "Find"), QLineEdit::Normal, {}, &ok);
+    const QString needle = QInputDialog::getText(this, I18n::t("ui.replace_2"),
+                                                 I18n::t("ui.find_2"), QLineEdit::Normal, {}, &ok);
     if (!ok || needle.isEmpty() || currentSheet() < 0)
         return;
-    const QString repl = QInputDialog::getText(this, I18n::t("Заменить", "Replace"),
-                                               I18n::t("Заменить на", "Replace with"), QLineEdit::Normal, {}, &ok);
+    const QString repl = QInputDialog::getText(this, I18n::t("ui.replace_2"),
+                                               I18n::t("ui.replace_with"), QLineEdit::Normal, {}, &ok);
     if (!ok)
         return;
     Worksheet &ws = m_wb->sheet(currentSheet());
-    m_wb->beginUndoMacro(I18n::t("Заменить", "Replace"));
+    m_wb->beginUndoMacro(I18n::t("ui.replace_2"));
     int n = 0;
     for (int r = 0; r < ws.rowCount; ++r) {
         for (int c = 0; c < ws.colCount; ++c) {
@@ -1346,7 +1338,7 @@ void MainWindow::replaceCell()
         }
     }
     m_wb->endUndoMacro();
-    statusBar()->showMessage(I18n::t("Заменено: %1", "Replaced: %1").arg(n), 3000);
+    statusBar()->showMessage(I18n::t("ui.replaced_1").arg(n), 3000);
 }
 
 void MainWindow::printSheet()

@@ -14,23 +14,7 @@
 
 static QString categoryTitle(const QString &id)
 {
-    if (id == QLatin1String("math"))
-        return I18n::t("Математика", "Math");
-    if (id == QLatin1String("stat"))
-        return I18n::t("Статистика", "Statistics");
-    if (id == QLatin1String("logic"))
-        return I18n::t("Логика", "Logical");
-    if (id == QLatin1String("text"))
-        return I18n::t("Текст", "Text");
-    if (id == QLatin1String("date"))
-        return I18n::t("Дата и время", "Date & time");
-    if (id == QLatin1String("lookup"))
-        return I18n::t("Ссылки и массивы", "Lookup");
-    if (id == QLatin1String("info"))
-        return I18n::t("Проверка", "Information");
-    if (id == QLatin1String("plugin"))
-        return I18n::t("Плагины", "Plugins");
-    return I18n::t("Все", "All");
+    return I18n::t(QStringLiteral("fn.cat.") + id);
 }
 
 FunctionBrowser::FunctionBrowser(QWidget *parent)
@@ -42,7 +26,7 @@ FunctionBrowser::FunctionBrowser(QWidget *parent)
 
     m_search = new QLineEdit(this);
     m_search->setObjectName(QStringLiteral("functionSearch"));
-    m_search->setPlaceholderText(I18n::t("Поиск функции…", "Search function…"));
+    m_search->setPlaceholderText(I18n::t("ui.search_function"));
     lay->addWidget(m_search);
 
     m_cat = new QComboBox(this);
@@ -111,7 +95,7 @@ void FunctionBrowser::rebuild()
             continue;
         auto *item = new QListWidgetItem(fn.name, m_list);
         item->setData(Qt::UserRole, fn.name);
-        item->setToolTip(I18n::lang() == QLatin1String("en") ? fn.helpEn() : fn.helpRu());
+        item->setToolTip(fn.help());
     }
     if (m_list->count() == 0) {
         updateDescription();
@@ -135,7 +119,7 @@ void FunctionBrowser::updateDescription()
         if (fn.name != name)
             continue;
         m_syntax->setText(fn.syntax);
-        m_help->setText(I18n::lang() == QLatin1String("en") ? fn.helpEn() : fn.helpRu());
+        m_help->setText(fn.help());
         return;
     }
     m_syntax->clear();
@@ -145,14 +129,13 @@ void FunctionBrowser::updateDescription()
 FunctionDialog::FunctionDialog(QWidget *parent)
     : QDialog(parent)
 {
-    setWindowTitle(I18n::t("Функция", "Function"));
+    setWindowTitle(I18n::t("ui.function_2"));
     setWindowIcon(ArbuzIcon::app());
     setObjectName(QStringLiteral("functionDialog"));
     resize(440, 520);
 
     auto *lay = new QVBoxLayout(this);
-    auto *hint = new QLabel(I18n::t("Выберите функцию и нажмите Вставить. Двойной щелчок тоже вставляет.",
-                                    "Select a function and click Insert. Double-click also inserts."),
+    auto *hint = new QLabel(I18n::t("ui.select_a_function_and_click_insert_double_click_also_ins"),
                             this);
     hint->setWordWrap(true);
     lay->addWidget(hint);
@@ -162,9 +145,9 @@ FunctionDialog::FunctionDialog(QWidget *parent)
     connect(m_browser, &FunctionBrowser::functionChosen, this, &QDialog::accept);
 
     auto *box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    box->button(QDialogButtonBox::Ok)->setText(I18n::t("Вставить", "Insert"));
+    box->button(QDialogButtonBox::Ok)->setText(I18n::t("ui.insert_2"));
     if (QPushButton *cancel = box->button(QDialogButtonBox::Cancel))
-        cancel->setText(I18n::t("Отмена", "Cancel"));
+        cancel->setText(I18n::t("ui.cancel"));
     connect(box, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(box, &QDialogButtonBox::rejected, this, &QDialog::reject);
     lay->addWidget(box);

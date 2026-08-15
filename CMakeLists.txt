@@ -23,6 +23,7 @@ qt_add_executable(arbuz
     src/formula/formulaengine.cpp
     src/io/fileio.cpp
     src/ui/i18n.cpp
+    src/ui/portable.cpp
     src/ui/appsettings.cpp
     src/ui/arbuzicon.cpp
     src/ui/theme.cpp
