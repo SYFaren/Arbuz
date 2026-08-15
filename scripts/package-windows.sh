@@ -97,7 +97,8 @@ fi
 cp -a "${LAUNCHER}" "${OUT}/Arbuz.exe"
 cp -a "${ENGINE}" "${RUNTIME}/engine.exe"
 
-cp -a "${QT_WIN}/bin/Qt6Core.dll" "${QT_WIN}/bin/Qt6Gui.dll" "${QT_WIN}/bin/Qt6Widgets.dll" "${RUNTIME}/"
+cp -a "${QT_WIN}/bin/Qt6Core.dll" "${QT_WIN}/bin/Qt6Gui.dll" "${QT_WIN}/bin/Qt6Widgets.dll" \
+  "${QT_WIN}/bin/Qt6PrintSupport.dll" "${RUNTIME}/"
 cp -a "${QT_WIN}/bin/Qt6Network.dll" "${RUNTIME}/" 2>/dev/null || true
 cp -a "${QT_WIN}/bin/"icu*.dll "${RUNTIME}/" 2>/dev/null || true
 cp -a "${QT_WIN}/bin/libgcc_s_seh-1.dll" "${RUNTIME}/" 2>/dev/null || true
@@ -124,7 +125,7 @@ Plugins = qt-plugins
 EOF
 
 cat > "${OUT}/README.txt" << 'EOF'
-Arbuz — portable Windows (x86_64)
+Arbuz — табличный калькулятор, portable Windows (x86_64)
 Создатель: SYFaren
 
 ════════════════════════════════════

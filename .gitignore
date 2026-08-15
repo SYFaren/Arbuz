@@ -2,10 +2,8 @@
 /build-win/
 /build-win-zlib/
 /dist/
-/.cache/
 /.deps/
 /ui-test-out/
-aqtinstall.log
 __pycache__/
 *.pyc
 *.pyo
@@ -14,8 +12,3 @@ CMakeUserPresets.json
 *.autosave
 .DS_Store
 Thumbs.db
-*.AppImage
-*.o
-moc_*
-ui_*
-qrc_*

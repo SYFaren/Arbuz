@@ -518,7 +518,7 @@ def main() -> None:
     # Drop leftover grid-era names if present.
     for leftover in ("fx-32.png", "fx-64.png", "add-sheet-32.png", "add-sheet-64.png"):
         pass
-    app_sizes = (16, 24, 32, 48, 64, 128, 256, 512)
+    app_sizes = (16, 24, 32, 48, 64, 128, 256)
     ico_rgba: list[tuple[int, bytes]] = []
     for size in app_sizes:
         print(f"app {size}")
@@ -526,7 +526,6 @@ def main() -> None:
         save_png(OUT / f"arbuz-{size}.png", canvas)
         if size in (16, 24, 32, 48, 64, 256):
             ico_rgba.append((size, canvas.rgba_bytes()))
-    (OUT / "arbuz.png").write_bytes((OUT / "arbuz-256.png").read_bytes())
     write_ico(OUT / "arbuz.ico", ico_rgba)
     write_svg(OUT / "arbuz.svg")
 

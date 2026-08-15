@@ -11,33 +11,40 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets PrintSupport)
 find_package(ZLIB REQUIRED)
 
 qt_add_executable(arbuz
-    src/main.cpp
-    src/i18n.cpp
-    src/appsettings.cpp
-    src/arbuzicon.cpp
-    src/cellref.cpp
-    src/exceldate.cpp
-    src/numformat.cpp
-    src/workbook.cpp
-    src/formulaengine.cpp
-    src/sheetmodel.cpp
-    src/sheetview.cpp
-    src/pluginhost.cpp
-    src/fileio.cpp
-    src/theme.cpp
-    src/firstrunwizard.cpp
-    src/creditsdialog.cpp
-    src/settingsdialog.cpp
-    src/functiondialog.cpp
-    src/griddelegate.cpp
-    src/mainwindow.cpp
-    src/selftest.cpp
-    src/uitest.cpp
+    src/app/main.cpp
+    src/app/mainwindow.cpp
+    src/core/cellref.cpp
+    src/core/exceldate.cpp
+    src/core/numformat.cpp
+    src/core/workbook.cpp
+    src/core/sheetmodel.cpp
+    src/core/sheetview.cpp
+    src/core/griddelegate.cpp
+    src/formula/formulaengine.cpp
+    src/io/fileio.cpp
+    src/ui/i18n.cpp
+    src/ui/appsettings.cpp
+    src/ui/arbuzicon.cpp
+    src/ui/theme.cpp
+    src/ui/firstrunwizard.cpp
+    src/ui/creditsdialog.cpp
+    src/ui/settingsdialog.cpp
+    src/ui/functiondialog.cpp
+    src/plugins/pluginhost.cpp
+    src/test/selftest.cpp
+    src/test/uitest.cpp
     resources/arbuz.qrc
 )
 
 target_include_directories(arbuz PRIVATE
     src
+    src/app
+    src/core
+    src/formula
+    src/io
+    src/ui
+    src/plugins
+    src/test
     third_party/xlfparser/include
 )
 
@@ -65,7 +72,7 @@ if(WIN32)
 
     # C stub: no libstdc++/libgcc DLLs next to Arbuz.exe. Engine finds them in runtime\.
     add_executable(arbuz-launcher WIN32
-        src/launcher.c
+        src/app/launcher.c
         "${CMAKE_CURRENT_BINARY_DIR}/arbuz_icon.rc"
     )
     set_target_properties(arbuz-launcher PROPERTIES

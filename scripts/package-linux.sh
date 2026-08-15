@@ -122,7 +122,7 @@ EOF
 chmod +x "${OUT}/Arbuz.sh"
 
 cat > "${OUT}/README.txt" << 'EOF'
-Arbuz — portable Linux (x86_64)
+Arbuz — табличный калькулятор, portable Linux (x86_64)
 Создатель: SYFaren
 
 ════════════════════════════════════
