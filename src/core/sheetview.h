@@ -35,6 +35,7 @@ private:
     void ensureSelection();
     void collapseToCurrent();
     void updateFrozenGeometry();
+    void syncFrozenLooks();
     QPoint mouseViewportPos(const QMouseEvent *event) const;
     bool hitsFillHandle(const QPoint &viewportPos) const;
     QModelIndex indexAtViewport(const QPoint &viewportPos) const;

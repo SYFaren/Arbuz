@@ -4,6 +4,7 @@
 /dist/
 /.deps/
 /ui-test-out/
+/screenshots/
 __pycache__/
 *.pyc
 *.pyo

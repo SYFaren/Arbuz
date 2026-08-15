@@ -21,7 +21,7 @@
 
 ## Скачать / portable
 
-Готовые zip (Windows и Linux): [syfaren.github.io](https://syfaren.github.io/) и [Releases](https://github.com/SYFaren/Arbuz/releases).
+Готовые zip (Windows и Linux): [syfaren.github.io/Arbuz.site](https://syfaren.github.io/Arbuz.site/) и [Releases](https://github.com/SYFaren/Arbuz/releases).
 
 Собрать portable из исходников:
 

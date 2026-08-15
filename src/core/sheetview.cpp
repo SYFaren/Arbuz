@@ -26,7 +26,7 @@ void SheetView::setModel(QAbstractItemModel *model)
     auto cloneView = [this](QTableView **slot) {
         if (*slot)
             return;
-        auto *v = new QTableView(this);
+        auto *v = new QTableView(viewport());
         v->setModel(this->model());
         v->setFocusPolicy(Qt::NoFocus);
         v->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -35,11 +35,16 @@ void SheetView::setModel(QAbstractItemModel *model)
         v->horizontalHeader()->hide();
         v->verticalHeader()->hide();
         v->setFrameShape(QFrame::NoFrame);
+        v->setShowGrid(showGrid());
+        v->setWordWrap(wordWrap());
+        v->setAlternatingRowColors(alternatingRowColors());
+        v->setAttribute(Qt::WA_TransparentForMouseEvents, true);
         *slot = v;
     };
     cloneView(&m_frozenCols);
     cloneView(&m_frozenRows);
     cloneView(&m_frozenCorner);
+    syncFrozenLooks();
     if (model && model->rowCount() > 0 && model->columnCount() > 0) {
         const QModelIndex a1 = model->index(0, 0);
         setCurrentIndex(a1);
@@ -108,7 +113,29 @@ void SheetView::setFrozen(int rows, int cols)
 {
     m_freezeRows = qMax(0, rows);
     m_freezeCols = qMax(0, cols);
+    syncFrozenLooks();
     updateFrozenGeometry();
+}
+
+void SheetView::syncFrozenLooks()
+{
+    QAbstractItemDelegate *del = itemDelegate();
+    const QList<QTableView *> views{m_frozenCols, m_frozenRows, m_frozenCorner};
+    for (QTableView *v : views) {
+        if (!v)
+            continue;
+        v->setItemDelegate(del);
+        v->setPalette(palette());
+        v->setFont(font());
+        v->setShowGrid(showGrid());
+        v->setStyleSheet(styleSheet());
+        if (model()) {
+            for (int c = 0; c < model()->columnCount(); ++c)
+                v->setColumnWidth(c, columnWidth(c));
+            for (int r = 0; r < model()->rowCount(); ++r)
+                v->setRowHeight(r, rowHeight(r));
+        }
+    }
 }
 
 QPoint SheetView::mouseViewportPos(const QMouseEvent *event) const
@@ -165,8 +192,11 @@ void SheetView::updateFrozenGeometry()
     if (!any)
         return;
 
-    const int x = verticalHeader()->width();
-    const int y = horizontalHeader()->height();
+    syncFrozenLooks();
+
+    // Overlays live on the viewport so coordinates match painted cells.
+    const int x = 0;
+    const int y = 0;
     int w = 0;
     for (int c = 0; c < m_freezeCols && c < model()->columnCount(); ++c)
         w += columnWidth(c);
@@ -174,23 +204,27 @@ void SheetView::updateFrozenGeometry()
     for (int r = 0; r < m_freezeRows && r < model()->rowCount(); ++r)
         h += rowHeight(r);
 
-    if (m_freezeCols > 0) {
-        m_frozenCols->move(x, y + h);
-        m_frozenCols->resize(w, viewport()->height() - h);
-        m_frozenCols->verticalScrollBar()->setValue(verticalScrollBar()->value());
-        for (int c = 0; c < model()->columnCount(); ++c)
-            m_frozenCols->setColumnHidden(c, c >= m_freezeCols);
-        for (int r = 0; r < model()->rowCount(); ++r)
-            m_frozenCols->setRowHidden(r, r < m_freezeRows);
-    }
     if (m_freezeRows > 0) {
         m_frozenRows->move(x + w, y);
-        m_frozenRows->resize(viewport()->width() - w, h);
+        m_frozenRows->resize(qMax(0, viewport()->width() - w), h);
         m_frozenRows->horizontalScrollBar()->setValue(horizontalScrollBar()->value());
         for (int r = 0; r < model()->rowCount(); ++r)
             m_frozenRows->setRowHidden(r, r >= m_freezeRows);
         for (int c = 0; c < model()->columnCount(); ++c)
             m_frozenRows->setColumnHidden(c, c < m_freezeCols);
+        m_frozenRows->raise();
+        m_frozenRows->show();
+    }
+    if (m_freezeCols > 0) {
+        m_frozenCols->move(x, y + h);
+        m_frozenCols->resize(w, qMax(0, viewport()->height() - h));
+        m_frozenCols->verticalScrollBar()->setValue(verticalScrollBar()->value());
+        for (int c = 0; c < model()->columnCount(); ++c)
+            m_frozenCols->setColumnHidden(c, c >= m_freezeCols);
+        for (int r = 0; r < model()->rowCount(); ++r)
+            m_frozenCols->setRowHidden(r, r < m_freezeRows);
+        m_frozenCols->raise();
+        m_frozenCols->show();
     }
     if (m_freezeRows > 0 && m_freezeCols > 0) {
         m_frozenCorner->move(x, y);
@@ -199,6 +233,8 @@ void SheetView::updateFrozenGeometry()
             m_frozenCorner->setRowHidden(r, r >= m_freezeRows);
         for (int c = 0; c < model()->columnCount(); ++c)
             m_frozenCorner->setColumnHidden(c, c >= m_freezeCols);
+        m_frozenCorner->raise();
+        m_frozenCorner->show();
     }
 }
 
