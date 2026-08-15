@@ -15,6 +15,7 @@
 #include <QColor>
 #include <QCoreApplication>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QIcon>
 #include <QMenu>
@@ -252,6 +253,30 @@ static void testFormulas()
     eq(wb.displayText(0, 83, 0), QStringLiteral("10"), "SUMIFS");
     wb.setRaw(0, 84, 0, QStringLiteral("=DATE(2020,1,15)+1"));
     eq(wb.displayText(0, 84, 0), QStringLiteral("2020-01-16"), "DATE+1");
+
+    {
+        Workbook huge;
+        huge.setRaw(0, 0, 0, QStringLiteral("10"));
+        huge.setRaw(0, 1, 0, QStringLiteral("20"));
+        QElapsedTimer t;
+        t.start();
+        huge.setRaw(0, 0, 1, QStringLiteral("=SUM(A1:A1048576)"));
+        eq(huge.displayText(0, 0, 1), QStringLiteral("30"), "SUM clipped to used rows");
+        ok(t.elapsed() < 500, QStringLiteral("huge column range finished in %1 ms").arg(t.elapsed()));
+        t.restart();
+        huge.setRaw(0, 1, 1, QStringLiteral("=SUM(C1:XFD1048576)"));
+        eq(huge.displayText(0, 1, 1), QStringLiteral("0"), "SUM empty huge range");
+        ok(t.elapsed() < 500, QStringLiteral("whole-sheet range finished in %1 ms").arg(t.elapsed()));
+    }
+    {
+        Workbook xs;
+        xs.addSheet(QStringLiteral("Other"));
+        xs.setRaw(1, 0, 0, QStringLiteral("5"));
+        xs.setRaw(1, 1, 0, QStringLiteral("7"));
+        xs.setRaw(0, 0, 0, QStringLiteral("100"));
+        xs.setRaw(0, 1, 0, QStringLiteral("=SUM(Other!A1:A100)"));
+        eq(xs.displayText(0, 1, 0), QStringLiteral("12"), "cross-sheet SUM range");
+    }
     eq(CellRef::adjustFormula(QStringLiteral("=A1+1"), 1, 0), QStringLiteral("=A2+1"), "adjust relative");
     eq(CellRef::adjustFormula(QStringLiteral("=$A$1"), 1, 1), QStringLiteral("=$A$1"), "adjust abs");
     wb.setRaw(0, 90, 0, QStringLiteral("1"));
@@ -645,6 +670,10 @@ static void testPythonPlugins()
             "def vat(amount):\n"
             "    nums = arbuz.numbers(amount)\n"
             "    return (nums[0] if nums else 0) * 0.20\n"
+            "@arbuz.function('FIRST', syntax='FIRST(range)')\n"
+            "def first(arg):\n"
+            "    nums = arbuz.numbers(arg)\n"
+            "    return nums[0] if nums else 0\n"
             "@arbuz.command('probe.fill', 'Заполнить B1', 'Fill B1')\n"
             "def fill():\n"
             "    arbuz.set('B1', 'ok')\n");
@@ -668,6 +697,13 @@ static void testPythonPlugins()
     eq(wb.displayText(0, 1, 0), QStringLiteral("20"), "VAT(A1)");
     wb.setRaw(0, 2, 0, QStringLiteral("=VAT(50)"));
     eq(wb.displayText(0, 2, 0), QStringLiteral("10"), "VAT(50)");
+
+    wb.addSheet(QStringLiteral("Other"));
+    wb.setRaw(1, 0, 0, QStringLiteral("99"));
+    wb.setRaw(1, 1, 0, QStringLiteral("1"));
+    PluginHost::instance().setCurrentSheet(0);
+    wb.setRaw(0, 3, 0, QStringLiteral("=FIRST(Other!A1:A2)"));
+    eq(wb.displayText(0, 3, 0), QStringLiteral("99"), "plugin FIRST other-sheet range");
 
     QMenu menu;
     PluginHost::instance().fillMenu(&menu);

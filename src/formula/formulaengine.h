@@ -65,8 +65,9 @@ class FormulaEngine
 public:
     using CellLookup = std::function<FormulaValue(int sheet, int row, int col)>;
     using SheetLookup = std::function<int(const QString &name)>;
+    using UsedBounds = std::function<bool(int sheet, int *lastRow, int *lastCol)>;
 
-    explicit FormulaEngine(CellLookup lookup, int currentSheet, SheetLookup sheets = {});
+    explicit FormulaEngine(CellLookup lookup, int currentSheet, SheetLookup sheets = {}, UsedBounds used = {});
 
     struct FormulaInfo {
         QString name;
@@ -93,6 +94,7 @@ public:
 private:
     CellLookup m_lookup;
     SheetLookup m_sheets;
+    UsedBounds m_used;
     int m_sheet = 0;
     QString m_src;
     int m_pos = 0;

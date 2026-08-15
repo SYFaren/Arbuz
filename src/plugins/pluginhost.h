@@ -3,6 +3,7 @@
 
 #include "formulaengine.h"
 
+#include <QHash>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QObject>
@@ -71,6 +72,7 @@ private:
     QVector<Command> m_commands;
     QVector<FormulaEngine::FormulaInfo> m_fns;
     QByteArray m_buf;
+    QHash<QString, FormulaValue> m_fnCache;
     bool m_inCall = false;
     bool m_serving = false;
     int m_sheet = 0;

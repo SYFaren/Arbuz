@@ -169,9 +169,10 @@ double FormulaValue::asNumber(bool *ok) const
     return 0;
 }
 
-FormulaEngine::FormulaEngine(CellLookup lookup, int currentSheet, SheetLookup sheets)
+FormulaEngine::FormulaEngine(CellLookup lookup, int currentSheet, SheetLookup sheets, UsedBounds used)
     : m_lookup(std::move(lookup))
     , m_sheets(std::move(sheets))
+    , m_used(std::move(used))
     , m_sheet(currentSheet)
 {
 }
@@ -801,8 +802,22 @@ int FormulaEngine::argSheet(const FormulaArg &a) const
 void FormulaEngine::collectRange(int sheet, int r1, int c1, int r2, int c2, QVector<FormulaValue> *out) const
 {
     const int sh = sheet >= 0 ? sheet : m_sheet;
-    for (int r = r1; r <= r2; ++r) {
-        for (int c = c1; c <= c2; ++c)
+    int rLo = qMin(r1, r2);
+    int rHi = qMax(r1, r2);
+    int cLo = qMin(c1, c2);
+    int cHi = qMax(c1, c2);
+    if (m_used) {
+        int lastR = -1;
+        int lastC = -1;
+        if (!m_used(sh, &lastR, &lastC) || lastR < 0 || lastC < 0)
+            return;
+        rHi = qMin(rHi, lastR);
+        cHi = qMin(cHi, lastC);
+    }
+    if (rLo > rHi || cLo > cHi)
+        return;
+    for (int r = rLo; r <= rHi; ++r) {
+        for (int c = cLo; c <= cHi; ++c)
             out->append(m_lookup(sh, r, c));
     }
 }

@@ -243,7 +243,8 @@ QString Workbook::evalCell(int sheetIndex, int row, int col)
             return FormulaValue::fromText(d);
         },
         sheetIndex,
-        [this](const QString &name) { return sheetIndexByName(name); });
+        [this](const QString &name) { return sheetIndexByName(name); },
+        [this](int sh, int *lastRow, int *lastCol) { return usedCorner(sh, lastRow, lastCol); });
     const FormulaValue v = engine.evaluate(raw);
     m_visiting.remove(key);
     const QString display = v.toDisplay();
@@ -344,6 +345,15 @@ void Workbook::recalculate()
 {
     m_cache.clear();
     m_visiting.clear();
+    for (int s = 0; s < m_sheets.size(); ++s) {
+        const QList<quint64> keys = m_sheets.at(s).cells.keys();
+        for (quint64 k : keys) {
+            const int row = int(k >> 32);
+            const int col = int(k & 0xffffffffu);
+            if (m_sheets.at(s).cell(row, col).raw.trimmed().startsWith(QLatin1Char('=')))
+                evalCell(s, row, col);
+        }
+    }
     emit contentsChanged();
 }
 

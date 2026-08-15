@@ -119,6 +119,7 @@ void PluginHost::stop()
     m_fns.clear();
     m_commands.clear();
     m_loaded.clear();
+    m_fnCache.clear();
     if (m_proc) {
         m_proc->kill();
         m_proc->waitForFinished(500);
@@ -423,18 +424,29 @@ QJsonValue PluginHost::argToJson(const FormulaArg &a) const
                  CellRef::a1(a.r1, a.c1) + QLatin1Char(':') + CellRef::a1(a.r2, a.c2));
         QJsonArray rows;
         if (m_wb) {
-            const int sh = m_sheet;
-            const int rLo = qMin(a.r1, a.r2), rHi = qMax(a.r1, a.r2);
-            const int cLo = qMin(a.c1, a.c2), cHi = qMax(a.c1, a.c2);
+            const int sh = (a.sheet >= 0 && a.sheet < m_wb->sheetCount()) ? a.sheet : m_sheet;
+            o.insert(QStringLiteral("sheet"), sh);
+            int rLo = qMin(a.r1, a.r2), rHi = qMax(a.r1, a.r2);
+            int cLo = qMin(a.c1, a.c2), cHi = qMax(a.c1, a.c2);
+            int lastR = -1, lastC = -1;
+            if (!m_wb->usedCorner(sh, &lastR, &lastC)) {
+                o.insert(QStringLiteral("values"), QJsonArray());
+                o.insert(QStringLiteral("rows"), rows);
+                return o;
+            }
+            rHi = qMin(rHi, lastR);
+            cHi = qMin(cHi, lastC);
             QJsonArray flat;
-            for (int r = rLo; r <= rHi; ++r) {
-                QJsonArray row;
-                for (int c = cLo; c <= cHi; ++c) {
-                    const QJsonValue v = cellJson(sh, r, c, false);
-                    row.append(v);
-                    flat.append(v);
+            if (rLo <= rHi && cLo <= cHi) {
+                for (int r = rLo; r <= rHi; ++r) {
+                    QJsonArray row;
+                    for (int c = cLo; c <= cHi; ++c) {
+                        const QJsonValue v = cellJson(sh, r, c, false);
+                        row.append(v);
+                        flat.append(v);
+                    }
+                    rows.append(row);
                 }
-                rows.append(row);
             }
             o.insert(QStringLiteral("values"), flat);
             o.insert(QStringLiteral("rows"), rows);
@@ -513,18 +525,31 @@ FormulaValue PluginHost::evalFunction(const QString &name, const QVector<Formula
     QJsonArray ja;
     for (const FormulaArg &a : args)
         ja.append(argToJson(a));
+    const QString cacheKey = name + QLatin1Char('\n')
+        + QString::fromUtf8(QJsonDocument(ja).toJson(QJsonDocument::Compact));
+    if (m_fnCache.contains(cacheKey))
+        return m_fnCache.value(cacheKey);
+    if (m_inCall || m_serving)
+        return FormulaValue::fromError(QStringLiteral("#BUSY"));
     QJsonObject req{{QStringLiteral("op"), QStringLiteral("call_function")},
                     {QStringLiteral("id"), reqId++},
                     {QStringLiteral("name"), name},
                     {QStringLiteral("args"), ja}};
     const QJsonObject res = rpc(req);
+    FormulaValue v;
     if (res.contains(QStringLiteral("error")) && !res.contains(QStringLiteral("value")))
-        return FormulaValue::fromError(res.value(QStringLiteral("error")).toString());
-    return jsonToValue(res);
+        v = FormulaValue::fromError(res.value(QStringLiteral("error")).toString());
+    else
+        v = jsonToValue(res);
+    if (!(v.isError()
+          && (v.error == QLatin1String("#TIMEOUT!") || v.error == QLatin1String("#BUSY"))))
+        m_fnCache.insert(cacheKey, v);
+    return v;
 }
 
 void PluginHost::notifyCellEdited(int sheet, int row, int col)
 {
+    m_fnCache.clear();
     if (!running() || m_inCall || m_serving)
         return;
     send(QJsonObject{{QStringLiteral("op"), QStringLiteral("event")},

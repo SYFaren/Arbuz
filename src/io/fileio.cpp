@@ -22,6 +22,8 @@
 
 namespace {
 
+constexpr int kMaxInflateBytes = 512 * 1024 * 1024;
+
 quint32 crc32Of(const QByteArray &data)
 {
     static quint32 table[256];
@@ -450,8 +452,15 @@ static quint32 ru32(const char *p)
 
 static QByteArray inflateRaw(const QByteArray &src, quint32 outHint)
 {
+    if (outHint > quint32(kMaxInflateBytes))
+        return {};
     QByteArray out;
-    out.resize(int(outHint ? outHint : quint32(src.size() * 4 + 64)));
+    int cap = int(outHint ? outHint : quint32(qMin(src.size() * 4 + 64, kMaxInflateBytes)));
+    if (cap < 64)
+        cap = 64;
+    if (cap > kMaxInflateBytes)
+        return {};
+    out.resize(cap);
     z_stream st;
     std::memset(&st, 0, sizeof(st));
     st.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(src.data()));
@@ -460,8 +469,18 @@ static QByteArray inflateRaw(const QByteArray &src, quint32 outHint)
         return {};
     int ret = Z_OK;
     while (ret != Z_STREAM_END) {
-        if (st.total_out >= uLong(out.size()))
-            out.resize(out.size() * 2 + 1024);
+        if (st.total_out >= uLong(kMaxInflateBytes)) {
+            inflateEnd(&st);
+            return {};
+        }
+        if (st.total_out >= uLong(out.size())) {
+            const int next = out.size() * 2 + 1024;
+            if (next > kMaxInflateBytes || next < out.size()) {
+                inflateEnd(&st);
+                return {};
+            }
+            out.resize(next);
+        }
         st.next_out = reinterpret_cast<Bytef *>(out.data() + st.total_out);
         st.avail_out = uInt(out.size() - int(st.total_out));
         ret = inflate(&st, Z_NO_FLUSH);
@@ -491,6 +510,7 @@ static QHash<QString, QByteArray> unzipAll(const QByteArray &zip)
         return files;
     const quint16 nrec = ru16(zip.constData() + eocd + 10);
     quint32 cdOff = ru32(zip.constData() + eocd + 16);
+    qint64 inflatedTotal = 0;
     for (quint16 i = 0; i < nrec; ++i) {
         if (cdOff + 46 > quint32(zip.size()) || ru32(zip.constData() + int(cdOff)) != 0x02014b50u)
             break;
@@ -501,6 +521,10 @@ static QHash<QString, QByteArray> unzipAll(const QByteArray &zip)
         const quint16 extra = ru16(zip.constData() + int(cdOff) + 30);
         const quint16 comment = ru16(zip.constData() + int(cdOff) + 32);
         const quint32 localOff = ru32(zip.constData() + int(cdOff) + 42);
+        if (uncomp > quint32(kMaxInflateBytes) || inflatedTotal + qint64(uncomp) > kMaxInflateBytes) {
+            cdOff += 46u + namelen + extra + comment;
+            continue;
+        }
         const QString name = QString::fromUtf8(zip.constData() + int(cdOff) + 46, namelen);
         const quint32 local = localOff;
         if (local + 30 > quint32(zip.size()))
@@ -514,6 +538,9 @@ static QHash<QString, QByteArray> unzipAll(const QByteArray &zip)
             data = payload;
         else if (method == 8)
             data = inflateRaw(payload, uncomp);
+        if (inflatedTotal + data.size() > kMaxInflateBytes)
+            data.clear();
+        inflatedTotal += data.size();
         if (!name.endsWith(QLatin1Char('/')))
             files.insert(name, data);
         cdOff += 46u + namelen + extra + comment;

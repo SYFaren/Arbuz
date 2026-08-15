@@ -21,7 +21,7 @@ The first spreadsheet was VisiCalc (*visible calculator*). Arbuz follows that id
 
 ## Download / portable build
 
-Ready-to-run zips (Windows and Linux) are on the [Releases](https://github.com/SYFaren/Arbuz/releases) page.
+Ready-to-run zips (Windows and Linux): [syfaren.github.io](https://syfaren.github.io/) and [Releases](https://github.com/SYFaren/Arbuz/releases).
 
 To build a portable zip from source:
 
