@@ -11,8 +11,8 @@ struct ChartObject {
     int srcC1 = 0;
     int srcR2 = 0;
     int srcC2 = 0;
-    int anchorRow = 1;
-    int anchorCol = 3;
+    int posX = 80;
+    int posY = 80;
     int widthPx = 360;
     int heightPx = 240;
     QString title;

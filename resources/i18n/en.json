@@ -60,6 +60,8 @@
   "ui.chart_bar": "Bar chart",
   "ui.chart_line": "Line chart",
   "ui.chart_pie": "Pie chart",
+  "ui.delete_chart": "Delete chart",
+  "ui.chart_no_data": "No numeric data in range",
   "ui.auto_filter": "AutoFilter",
   "ui.filter_column": "Filter column…",
   "ui.clear_filter": "Clear filter",

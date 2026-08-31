@@ -1,24 +1,33 @@
 #include "chartwidget.h"
+#include "i18n.h"
 #include "numformat.h"
 #include "workbook.h"
 
+#include <QContextMenuEvent>
+#include <QMenu>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QtMath>
 #include <numeric>
 
-ChartWidget::ChartWidget(Workbook *wb, int sheetIndex, ChartObject chart, QWidget *parent)
+namespace {
+constexpr int kTitleH = 22;
+constexpr int kHandle = 14;
+constexpr int kFrame = 1;
+}
+
+ChartWidget::ChartWidget(Workbook *wb, int sheetIndex, int chartIndex, ChartObject chart, QWidget *parent)
     : QWidget(parent)
     , m_wb(wb)
     , m_sheet(sheetIndex)
+    , m_chartIndex(chartIndex)
     , m_chart(chart)
 {
-    setMinimumSize(120, 80);
+    setMinimumSize(140, 100);
     resize(m_chart.widthPx, m_chart.heightPx);
-    setAutoFillBackground(true);
-    QPalette pal = palette();
-    pal.setColor(QPalette::Window, QColor(255, 255, 255, 245));
-    setPalette(pal);
+    setMouseTracking(true);
+    setFocusPolicy(Qt::ClickFocus);
 }
 
 void ChartWidget::setChart(const ChartObject &chart)
@@ -28,23 +37,134 @@ void ChartWidget::setChart(const ChartObject &chart)
     update();
 }
 
+QRect ChartWidget::titleBarRect() const
+{
+    return QRect(kFrame, kFrame, width() - kFrame * 2, kTitleH);
+}
+
+QRect ChartWidget::resizeHandleRect() const
+{
+    return QRect(width() - kHandle - kFrame, height() - kHandle - kFrame, kHandle, kHandle);
+}
+
+void ChartWidget::emitGeometry()
+{
+    m_chart.widthPx = width();
+    m_chart.heightPx = height();
+    emit geometryChanged(m_chartIndex);
+}
+
+void ChartWidget::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() != Qt::LeftButton) {
+        QWidget::mousePressEvent(event);
+        return;
+    }
+    raise();
+    setFocus();
+    const QPoint p = event->pos();
+    if (resizeHandleRect().contains(p)) {
+        m_drag = Resize;
+        m_dragStart = event->globalPosition().toPoint();
+        m_originSize = size();
+    } else if (titleBarRect().contains(p) || rect().contains(p)) {
+        m_drag = Move;
+        m_dragStart = event->globalPosition().toPoint();
+        m_originPos = pos();
+    }
+    event->accept();
+}
+
+void ChartWidget::mouseMoveEvent(QMouseEvent *event)
+{
+    if (m_drag == Move) {
+        const QPoint delta = event->globalPosition().toPoint() - m_dragStart;
+        move(m_originPos + delta);
+        emitGeometry();
+        event->accept();
+        return;
+    }
+    if (m_drag == Resize) {
+        const QPoint delta = event->globalPosition().toPoint() - m_dragStart;
+        const int w = qMax(minimumWidth(), m_originSize.width() + delta.x());
+        const int h = qMax(minimumHeight(), m_originSize.height() + delta.y());
+        resize(w, h);
+        emitGeometry();
+        event->accept();
+        return;
+    }
+
+    const QPoint p = event->pos();
+    if (resizeHandleRect().contains(p))
+        setCursor(Qt::SizeFDiagCursor);
+    else if (titleBarRect().contains(p))
+        setCursor(Qt::SizeAllCursor);
+    else
+        unsetCursor();
+    QWidget::mouseMoveEvent(event);
+}
+
+void ChartWidget::mouseReleaseEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton && m_drag != None) {
+        m_drag = None;
+        unsetCursor();
+        emitGeometry();
+        event->accept();
+        return;
+    }
+    QWidget::mouseReleaseEvent(event);
+}
+
+void ChartWidget::contextMenuEvent(QContextMenuEvent *event)
+{
+    QMenu menu(this);
+    menu.addAction(I18n::t("ui.delete_chart"), this, [this]() {
+        if (!m_wb || m_sheet < 0 || m_sheet >= m_wb->sheetCount())
+            return;
+        Worksheet &ws = m_wb->sheet(m_sheet);
+        if (m_chartIndex >= 0 && m_chartIndex < ws.charts.size()) {
+            ws.charts.removeAt(m_chartIndex);
+            hide();
+            deleteLater();
+            emit geometryChanged(-1);
+        }
+    });
+    menu.exec(event->globalPos());
+}
+
 void ChartWidget::paintEvent(QPaintEvent *)
 {
-    if (!m_wb || m_sheet < 0 || m_sheet >= m_wb->sheetCount())
-        return;
-
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
-    p.fillRect(rect(), QColor(255, 255, 255, 245));
-    p.setPen(QColor(180, 180, 180));
+
+    p.fillRect(rect(), QColor(255, 255, 255, 252));
+    p.setPen(QColor(120, 120, 120));
     p.drawRect(rect().adjusted(0, 0, -1, -1));
+
+    p.fillRect(titleBarRect(), QColor(236, 240, 244));
+    p.setPen(QColor(90, 90, 90));
+    p.drawLine(kFrame, kTitleH + kFrame, width() - kFrame, kTitleH + kFrame);
+    const QString title = m_chart.title.isEmpty() ? I18n::t("ui.chart") : m_chart.title;
+    p.setPen(Qt::black);
+    p.drawText(titleBarRect().adjusted(6, 0, -6, 0), Qt::AlignVCenter | Qt::AlignLeft, title);
+
+    p.fillRect(resizeHandleRect(), QColor(200, 200, 200));
+    p.setPen(QColor(80, 80, 80));
+    const QRect h = resizeHandleRect().adjusted(3, 3, -3, -3);
+    p.drawLine(h.bottomLeft(), h.topRight());
+    p.drawLine(h.left() + 4, h.bottom() - 1, h.right() - 1, h.top() + 4);
+
+    if (!m_wb || m_sheet < 0 || m_sheet >= m_wb->sheetCount())
+        return;
 
     const int r1 = qMin(m_chart.srcR1, m_chart.srcR2);
     const int r2 = qMax(m_chart.srcR1, m_chart.srcR2);
     const int c1 = qMin(m_chart.srcC1, m_chart.srcC2);
     const int c2 = qMax(m_chart.srcC1, m_chart.srcC2);
-    if (r2 <= r1 || c2 <= c1) {
-        p.drawText(rect(), Qt::AlignCenter, QStringLiteral("—"));
+    const QRect area = rect().adjusted(8, kTitleH + 8, -10, -10);
+    if (r2 <= r1 || c2 <= c1 || area.width() < 20 || area.height() < 20) {
+        p.drawText(area, Qt::AlignCenter, QStringLiteral("—"));
         return;
     }
 
@@ -53,7 +173,7 @@ void ChartWidget::paintEvent(QPaintEvent *)
     const int labelCol = c1;
     const int valueCol = c1 + 1;
     if (valueCol > c2) {
-        p.drawText(rect(), Qt::AlignCenter, QStringLiteral("—"));
+        p.drawText(area, Qt::AlignCenter, QStringLiteral("—"));
         return;
     }
     for (int r = r1 + 1; r <= r2; ++r) {
@@ -66,14 +186,8 @@ void ChartWidget::paintEvent(QPaintEvent *)
         values.append(n);
     }
     if (values.isEmpty()) {
-        p.drawText(rect(), Qt::AlignCenter, QStringLiteral("—"));
+        p.drawText(area, Qt::AlignCenter, I18n::t("ui.chart_no_data"));
         return;
-    }
-
-    const QRect area = rect().adjusted(8, 24, -8, -8);
-    if (!m_chart.title.isEmpty()) {
-        p.setPen(Qt::black);
-        p.drawText(QRect(8, 4, width() - 16, 18), Qt::AlignCenter, m_chart.title);
     }
 
     static const QColor palette[] = {
@@ -96,21 +210,13 @@ void ChartWidget::paintEvent(QPaintEvent *)
                       int(start), int(-span));
             start -= span;
         }
-        p.setPen(Qt::black);
-        int ly = area.bottom() - labels.size() * 12;
-        for (int i = 0; i < labels.size(); ++i) {
-            p.setBrush(palette[i % 8]);
-            p.drawRect(area.left(), ly + i * 12, 10, 10);
-            p.drawText(area.left() + 14, ly + i * 12 + 10, labels.at(i));
-        }
         return;
     }
 
     const double vmax = *std::max_element(values.cbegin(), values.cend());
-    const double scale = vmax > 0 ? (area.height() - 20) / vmax : 1.0;
+    const double scale = vmax > 0 ? (area.height() - 16) / vmax : 1.0;
     const int n = values.size();
     const int gap = 4;
-    const bool horizontal = m_chart.type == ChartObject::Bar;
 
     if (m_chart.type == ChartObject::Line) {
         QPainterPath path;
@@ -131,7 +237,7 @@ void ChartWidget::paintEvent(QPaintEvent *)
             const double y = area.bottom() - values.at(i) * scale;
             p.drawEllipse(QPointF(x, y), 3, 3);
         }
-    } else if (horizontal) {
+    } else if (m_chart.type == ChartObject::Bar) {
         const int barH = qMax(4, (area.height() - gap * (n + 1)) / qMax(1, n));
         for (int i = 0; i < n; ++i) {
             const int y = area.top() + gap + i * (barH + gap);
@@ -144,21 +250,6 @@ void ChartWidget::paintEvent(QPaintEvent *)
             const int x = area.left() + gap + i * (barW + gap);
             const int h = int(values.at(i) * scale);
             p.fillRect(x, area.bottom() - h, barW, h, palette[i % 8]);
-        }
-    }
-
-    p.setPen(Qt::black);
-    if (horizontal) {
-        const int barH = qMax(4, (area.height() - gap * (n + 1)) / qMax(1, n));
-        for (int i = 0; i < n; ++i) {
-            const int y = area.top() + gap + i * (barH + gap);
-            p.drawText(area.left() + int(values.at(i) * scale) + 4, y + barH - 2, labels.at(i));
-        }
-    } else if (m_chart.type != ChartObject::Line) {
-        const int barW = qMax(4, (area.width() - gap * (n + 1)) / qMax(1, n));
-        for (int i = 0; i < n; ++i) {
-            const int x = area.left() + gap + i * (barW + gap);
-            p.drawText(x, area.bottom() + 12, barW, 12, Qt::AlignHCenter, labels.at(i));
         }
     }
 }

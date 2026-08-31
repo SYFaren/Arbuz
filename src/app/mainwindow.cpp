@@ -359,7 +359,6 @@ MainWindow::MainWindow(QWidget *parent)
         updateStatus();
         for (ChartWidget *w : m_chartWidgets)
             w->update();
-        repositionCharts();
     });
     connect(m_wb, &Workbook::structureChanged, this, &MainWindow::rebuildSheetTabs);
     connect(m_wb, &Workbook::cellEdited, this, [](int sh, int r, int c) {
@@ -402,6 +401,8 @@ void MainWindow::setupSheetView()
             this, [this](const QItemSelection &, const QItemSelection &) { onSelectionChanged(); });
     connect(m_view, &QTableView::customContextMenuRequested, this, &MainWindow::cellContextMenu);
     connect(m_view, &SheetView::fillReleased, this, &MainWindow::onFillReleased);
+    connect(m_view->horizontalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::repositionCharts);
+    connect(m_view->verticalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::repositionCharts);
     connect(m_view->horizontalHeader(), &QHeaderView::sectionDoubleClicked, this, [this](int section) {
         m_view->resizeColumnToContents(section);
     });
@@ -1576,7 +1577,7 @@ void MainWindow::clearAutoFilter()
 
 void MainWindow::insertChart(ChartObject::Type type)
 {
-    if (currentSheet() < 0)
+    if (currentSheet() < 0 || !m_view)
         return;
     int r1 = 0, c1 = 0, r2 = 0, c2 = 0;
     selectedBounds(&r1, &c1, &r2, &c2);
@@ -1590,9 +1591,17 @@ void MainWindow::insertChart(ChartObject::Type type)
     chart.srcC1 = c1;
     chart.srcR2 = r2;
     chart.srcC2 = c2;
-    chart.anchorRow = qMax(0, r1);
-    chart.anchorCol = c2 + 1;
     chart.title = m_wb->sheet(currentSheet()).name;
+    const int sx = m_view->horizontalScrollBar()->value();
+    const int sy = m_view->verticalScrollBar()->value();
+    if (m_view->currentIndex().isValid()) {
+        const QRect cell = m_view->visualRect(m_view->currentIndex());
+        chart.posX = sx + cell.x() + 12;
+        chart.posY = sy + cell.y() + 12;
+    } else {
+        chart.posX = sx + 24;
+        chart.posY = sy + 24;
+    }
     m_wb->sheet(currentSheet()).charts.append(chart);
     rebuildCharts();
 }
@@ -1622,8 +1631,9 @@ void MainWindow::rebuildCharts()
     if (!m_view || currentSheet() < 0)
         return;
     const Worksheet &ws = m_wb->sheet(currentSheet());
-    for (const ChartObject &chart : ws.charts) {
-        auto *w = new ChartWidget(m_wb, currentSheet(), chart, m_view->viewport());
+    for (int i = 0; i < ws.charts.size(); ++i) {
+        auto *w = new ChartWidget(m_wb, currentSheet(), i, ws.charts.at(i), m_view->viewport());
+        connect(w, &ChartWidget::geometryChanged, this, &MainWindow::syncChartGeometry);
         w->show();
         w->raise();
         m_chartWidgets.append(w);
@@ -1631,19 +1641,49 @@ void MainWindow::rebuildCharts()
     repositionCharts();
 }
 
+void MainWindow::syncChartGeometry(int chartIndex)
+{
+    if (chartIndex < 0) {
+        rebuildCharts();
+        return;
+    }
+    if (!m_view || currentSheet() < 0)
+        return;
+    ChartWidget *w = nullptr;
+    for (ChartWidget *cw : m_chartWidgets) {
+        if (cw->chartIndex() == chartIndex) {
+            w = cw;
+            break;
+        }
+    }
+    if (!w)
+        return;
+    Worksheet &ws = m_wb->sheet(currentSheet());
+    if (chartIndex < 0 || chartIndex >= ws.charts.size())
+        return;
+    const int hx = m_view->verticalHeader()->width();
+    const int hy = m_view->horizontalHeader()->height();
+    const int sx = m_view->horizontalScrollBar()->value();
+    const int sy = m_view->verticalScrollBar()->value();
+    ChartObject &chart = ws.charts[chartIndex];
+    chart.posX = w->x() - hx + sx;
+    chart.posY = w->y() - hy + sy;
+    chart.widthPx = w->width();
+    chart.heightPx = w->height();
+}
+
 void MainWindow::repositionCharts()
 {
-    if (!m_view || !m_model)
+    if (!m_view || !m_model || currentSheet() < 0)
         return;
     const Worksheet &ws = m_wb->sheet(currentSheet());
+    const int hx = m_view->verticalHeader()->width();
+    const int hy = m_view->horizontalHeader()->height();
+    const int sx = m_view->horizontalScrollBar()->value();
+    const int sy = m_view->verticalScrollBar()->value();
     for (int i = 0; i < m_chartWidgets.size() && i < ws.charts.size(); ++i) {
         ChartWidget *w = m_chartWidgets.at(i);
         const ChartObject &chart = ws.charts.at(i);
-        const QModelIndex idx = m_model->index(chart.anchorRow, chart.anchorCol);
-        if (!idx.isValid())
-            continue;
-        const QRect rect = m_view->visualRect(idx);
-        w->move(rect.topLeft());
-        w->resize(chart.widthPx, chart.heightPx);
+        w->setGeometry(hx + chart.posX - sx, hy + chart.posY - sy, chart.widthPx, chart.heightPx);
     }
 }

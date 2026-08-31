@@ -113,6 +113,7 @@ private:
     void applyFilterVisibility();
     void rebuildCharts();
     void repositionCharts();
+    void syncChartGeometry(int chartIndex);
     void insertChart(ChartObject::Type type);
     QMenu *functionMenu(QWidget *parent);
     void insertFunction(const QString &name);

@@ -60,6 +60,8 @@
   "ui.chart_bar": "Полосы",
   "ui.chart_line": "График",
   "ui.chart_pie": "Круговая",
+  "ui.delete_chart": "Удалить диаграмму",
+  "ui.chart_no_data": "Нет числовых данных в диапазоне",
   "ui.auto_filter": "Автофильтр",
   "ui.filter_column": "Фильтр столбца…",
   "ui.clear_filter": "Сбросить фильтр",
