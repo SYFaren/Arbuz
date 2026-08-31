@@ -37,6 +37,7 @@ qt_add_executable(arbuz
     src/ui/functiondialog.cpp
     src/plugins/pluginhost.cpp
     src/test/selftest.cpp
+    src/test/useraudit.cpp
     src/test/demo.cpp
     src/test/uitest.cpp
     resources/arbuz.qrc

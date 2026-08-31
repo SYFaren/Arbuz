@@ -1,6 +1,7 @@
 #ifndef ARBUZ_CHART_H
 #define ARBUZ_CHART_H
 
+#include <QRect>
 #include <QString>
 #include <QVector>
 
@@ -17,7 +18,7 @@ struct ChartObject {
     int posX = 80;
     int posY = 80;
     int widthPx = 360;
-    int heightPx = 240;
+    int heightPx = 260;
     QString title;
     bool hasHeaderRow = true;
     bool showLegend = true;
@@ -39,5 +40,6 @@ struct ChartData {
 ChartData extractChartData(Workbook *wb, int sheetIndex, const ChartObject &chart);
 QString chartTypeToString(ChartObject::Type type);
 bool chartTypeFromString(const QString &s, ChartObject::Type *out);
+QRect clampChartGeometry(const QRect &geo, const QSize &bounds, const QSize &minSize, int margin = 8);
 
 #endif

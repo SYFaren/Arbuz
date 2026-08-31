@@ -23,6 +23,7 @@ run() {
 run "build" "${ROOT}/scripts/build.sh"
 run "self-test" "${BIN}" --self-test
 run "ui-test" env QT_QPA_PLATFORM=offscreen "${BIN}" --ui-test
+run "user-audit" env QT_QPA_PLATFORM=offscreen "${BIN}" --user-test
 run "python-helpers" python3 "${ROOT}/python/tests/test_helpers.py"
 run "python-plugin-protocol" python3 "${ROOT}/python/tests/test_plugin_protocol.py"
 run "python-compile" python3 -m py_compile \

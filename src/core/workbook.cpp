@@ -679,8 +679,14 @@ void Workbook::sortRange(int sheetIndex, int r1, int c1, int r2, int c2, int key
     for (int r = r1; r <= r2; ++r)
         order.append(r);
     std::stable_sort(order.begin(), order.end(), [&](int a, int b) {
-        const QString sa = displayText(sheetIndex, a, keyCol);
-        const QString sb = displayText(sheetIndex, b, keyCol);
+        auto keyText = [&](int row) {
+            const CellData cell = ws.cell(row, keyCol);
+            if (!cell.raw.isEmpty() && !cell.raw.startsWith(QLatin1Char('=')))
+                return cell.raw;
+            return displayText(sheetIndex, row, keyCol);
+        };
+        const QString sa = keyText(a);
+        const QString sb = keyText(b);
         double na = 0, nb = 0;
         const bool oka = NumFormat::parse(sa, &na);
         const bool okb = NumFormat::parse(sb, &nb);
@@ -700,9 +706,12 @@ void Workbook::sortRange(int sheetIndex, int r1, int c1, int r2, int c2, int key
     }
     for (int i = 0; i < order.size(); ++i) {
         const int src = order.at(i) - r1;
+        if (src < 0 || src >= rows.size())
+            continue;
         for (int c = c1; c <= c2; ++c)
             ws.setCell(r1 + i, c, rows.at(src).at(c - c1));
     }
+    m_cache.clear();
     recalculate();
     if (rec)
         pushSheetsUndo(before, QStringLiteral("Sort"));

@@ -139,3 +139,16 @@ bool chartTypeFromString(const QString &s, ChartObject::Type *out)
     }
     return false;
 }
+
+QRect clampChartGeometry(const QRect &geo, const QSize &bounds, const QSize &minSize, int margin)
+{
+    if (bounds.width() <= margin * 2 || bounds.height() <= margin * 2)
+        return geo;
+    const int maxW = qMax(minSize.width(), bounds.width() - margin * 2);
+    const int maxH = qMax(minSize.height(), bounds.height() - margin * 2);
+    const int w = qBound(minSize.width(), geo.width(), maxW);
+    const int h = qBound(minSize.height(), geo.height(), maxH);
+    const int x = qBound(margin, geo.x(), qMax(margin, bounds.width() - w - margin));
+    const int y = qBound(margin, geo.y(), qMax(margin, bounds.height() - h - margin));
+    return QRect(x, y, w, h);
+}

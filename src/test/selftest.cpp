@@ -4,6 +4,7 @@
 #include "cellref.h"
 #include "chart.h"
 #include "clipdata.h"
+#include "demo.h"
 #include "fileio.h"
 #include "formulaengine.h"
 #include "i18n.h"
@@ -827,6 +828,56 @@ static void testNewFeatures()
     eq(xlsxWb.displayText(0, 0, 0), QStringLiteral("3"), "xlsx formula still evaluates after deflate");
 }
 
+static void testCyrillicVlookup()
+{
+    Workbook wb;
+    wb.setRaw(0, 4, 4, QStringLiteral("товар"));
+    wb.setRaw(0, 4, 5, QStringLiteral("цена"));
+    wb.setRaw(0, 5, 4, QStringLiteral("яблоко"));
+    wb.setRaw(0, 5, 5, QStringLiteral("50"));
+    wb.setRaw(0, 0, 0, QStringLiteral("=VLOOKUP(\"яблоко\";E5:F7;2;0)"));
+    wb.recalculate();
+    eq(wb.displayText(0, 0, 0), QStringLiteral("50"), "cyrillic VLOOKUP E5:F7");
+}
+
+static void testDemoSort()
+{
+    Workbook wb;
+    wb.setRaw(0, 1, 0, QStringLiteral("B"));
+    wb.setRaw(0, 2, 0, QStringLiteral("A"));
+    wb.sortRange(0, 1, 0, 2, 0, 0, true);
+    eq(wb.sheet(0).cell(1, 0).raw, QStringLiteral("A"), "simple sort");
+
+    Workbook demo;
+    buildDemoWorkbook(&demo);
+    int sh = -1;
+    for (int i = 0; i < demo.sheetCount(); ++i) {
+        if (demo.sheet(i).name == QStringLiteral("Data")) {
+            sh = i;
+            break;
+        }
+    }
+    ok(sh >= 0, QStringLiteral("Data sheet for sort"));
+    if (sh < 0)
+        return;
+    demo.sortRange(sh, 1, 0, 5, 3, 0, true);
+    eq(demo.sheet(sh).cell(1, 0).raw, QStringLiteral("Магазин"), "demo sort dept asc");
+    eq(demo.sheet(sh).cell(5, 0).raw, QStringLiteral("Склад"), "demo sort dept desc row");
+}
+
+static void testBuildDemoVlookup()
+{
+    Workbook wb;
+    buildDemoWorkbook(&wb);
+    for (int i = 0; i < wb.sheetCount(); ++i) {
+        if (wb.sheet(i).name == QStringLiteral("Formulas")) {
+            eq(wb.displayText(i, 3, 2), QStringLiteral("50"), "buildDemo VLOOKUP");
+            return;
+        }
+    }
+    fail(QStringLiteral("Formulas sheet missing in buildDemo"));
+}
+
 static void testDemoWorkbookFile()
 {
     QString path = QDir(QCoreApplication::applicationDirPath()).absoluteFilePath(QStringLiteral("../demo/Arbuz-feature-demo.xlsx"));
@@ -926,6 +977,26 @@ static void testCharts()
     ok(data.series.size() == 2, QStringLiteral("chart series=%1").arg(data.series.size()));
     eq(data.series.at(0).name, QStringLiteral("Sales"), "chart series name");
     ok(qAbs(data.series.at(0).values.at(1) - 150.0) < 0.01, QStringLiteral("chart value Feb"));
+    ok(data.yMax >= 150.0, QStringLiteral("chart ymax covers data"));
+
+    ChartObject demoCh;
+    demoCh.srcR1 = 0;
+    demoCh.srcC1 = 0;
+    demoCh.srcR2 = 5;
+    demoCh.srcC2 = 1;
+    demoCh.hasHeaderRow = true;
+    wb.setRaw(0, 1, 0, QStringLiteral("Янв"));
+    wb.setRaw(0, 1, 1, QStringLiteral("120"));
+    wb.setRaw(0, 2, 0, QStringLiteral("Фев"));
+    wb.setRaw(0, 2, 1, QStringLiteral("150"));
+    wb.setRaw(0, 3, 0, QStringLiteral("Мар"));
+    wb.setRaw(0, 3, 1, QStringLiteral("90"));
+    wb.setRaw(0, 4, 0, QStringLiteral("Апр"));
+    wb.setRaw(0, 4, 1, QStringLiteral("180"));
+    wb.setRaw(0, 5, 0, QStringLiteral("Май"));
+    wb.setRaw(0, 5, 1, QStringLiteral("140"));
+    const ChartData sales = extractChartData(&wb, 0, demoCh);
+    ok(sales.yMax >= 180.0, QStringLiteral("chart ymax covers april peak"));
 
     wb.sheet(0).charts.append(ch);
     QTemporaryDir tmp;
@@ -954,6 +1025,9 @@ int runSelfTest()
     testNewFeatures();
     testMoreFormulas();
     testCharts();
+    testCyrillicVlookup();
+    testBuildDemoVlookup();
+    testDemoSort();
     testDemoWorkbookFile();
     testThemeAndI18n();
     testIcons();

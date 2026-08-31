@@ -27,6 +27,10 @@
 #include <QClipboard>
 #include <QCloseEvent>
 #include <QColorDialog>
+#include <QEvent>
+#include <QResizeEvent>
+#include <QShowEvent>
+#include <QTimer>
 #include <QFileDialog>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -406,6 +410,7 @@ void MainWindow::setupSheetView()
     connect(m_view, &SheetView::fillReleased, this, &MainWindow::onFillReleased);
     connect(m_view->horizontalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::repositionCharts);
     connect(m_view->verticalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::repositionCharts);
+    m_view->viewport()->installEventFilter(this);
     connect(m_view->horizontalHeader(), &QHeaderView::sectionDoubleClicked, this, [this](int section) {
         m_view->resizeColumnToContents(section);
     });
@@ -745,6 +750,7 @@ void MainWindow::openDemo()
     }
     PluginHost::instance().notifyEvent(QStringLiteral("workbook_opened"),
                                        QJsonObject{{QStringLiteral("path"), QStringLiteral("demo")}});
+    QTimer::singleShot(0, this, &MainWindow::repositionCharts);
 }
 
 bool MainWindow::saveFile()
@@ -803,6 +809,25 @@ bool MainWindow::confirmSave()
     if (box.clickedButton() == yes)
         return saveFile();
     return true;
+}
+
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    if (m_view && watched == m_view->viewport() && event->type() == QEvent::Resize)
+        repositionCharts();
+    return QMainWindow::eventFilter(watched, event);
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    repositionCharts();
+}
+
+void MainWindow::showEvent(QShowEvent *event)
+{
+    QMainWindow::showEvent(event);
+    QTimer::singleShot(0, this, &MainWindow::repositionCharts);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -1625,6 +1650,15 @@ void MainWindow::insertChart(ChartObject::Type type)
         chart.posX = sx + 24;
         chart.posY = sy + 24;
     }
+    const int hx = m_view->verticalHeader()->width();
+    const int hy = m_view->horizontalHeader()->height();
+    const QSize vp = m_view->viewport()->size();
+    QRect g(hx + chart.posX - sx, hy + chart.posY - sy, chart.widthPx, chart.heightPx);
+    g = clampChartGeometry(g, vp, QSize(180, 140));
+    chart.posX = g.x() - hx + sx;
+    chart.posY = g.y() - hy + sy;
+    chart.widthPx = g.width();
+    chart.heightPx = g.height();
     m_wb->sheet(currentSheet()).charts.append(chart);
     rebuildCharts();
 }
@@ -1667,6 +1701,7 @@ void MainWindow::rebuildCharts()
         m_chartWidgets.append(w);
     }
     repositionCharts();
+    QTimer::singleShot(0, this, &MainWindow::repositionCharts);
 }
 
 void MainWindow::syncChartGeometry(int chartIndex)
@@ -1704,14 +1739,26 @@ void MainWindow::repositionCharts()
 {
     if (!m_view || !m_model || currentSheet() < 0)
         return;
-    const Worksheet &ws = m_wb->sheet(currentSheet());
+    Worksheet &ws = m_wb->sheet(currentSheet());
     const int hx = m_view->verticalHeader()->width();
     const int hy = m_view->horizontalHeader()->height();
     const int sx = m_view->horizontalScrollBar()->value();
     const int sy = m_view->verticalScrollBar()->value();
+    const QSize vp = m_view->viewport()->size();
     for (int i = 0; i < m_chartWidgets.size() && i < ws.charts.size(); ++i) {
         ChartWidget *w = m_chartWidgets.at(i);
-        const ChartObject &chart = ws.charts.at(i);
-        w->setGeometry(hx + chart.posX - sx, hy + chart.posY - sy, chart.widthPx, chart.heightPx);
+        ChartObject &chart = ws.charts[i];
+        QRect g(hx + chart.posX - sx, hy + chart.posY - sy, chart.widthPx, chart.heightPx);
+        g = clampChartGeometry(g, vp, w->minimumSize());
+        w->setGeometry(g);
+        const int newPosX = g.x() - hx + sx;
+        const int newPosY = g.y() - hy + sy;
+        if (newPosX != chart.posX || newPosY != chart.posY || g.width() != chart.widthPx
+            || g.height() != chart.heightPx) {
+            chart.posX = newPosX;
+            chart.posY = newPosY;
+            chart.widthPx = g.width();
+            chart.heightPx = g.height();
+        }
     }
 }

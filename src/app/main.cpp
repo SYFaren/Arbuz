@@ -6,6 +6,7 @@
 #include "demo.h"
 #include "theme.h"
 #include "uitest.h"
+#include "useraudit.h"
 
 #include <QApplication>
 #include <QCoreApplication>
@@ -18,6 +19,7 @@ int main(int argc, char *argv[])
     const QByteArray mode = (argc > 1) ? QByteArray(argv[1]) : QByteArray();
     const bool self = mode == QByteArray("--self-test") || mode == QByteArray("--all-test");
     const bool ui = mode == QByteArray("--ui-test") || mode == QByteArray("--all-test");
+    const bool user = mode == QByteArray("--user-test") || mode == QByteArray("--all-test");
     const bool writeDemo = mode == QByteArray("--write-demo");
     const bool openDemo = mode == QByteArray("--open-demo");
 
@@ -30,7 +32,7 @@ int main(int argc, char *argv[])
         return writeDemoWorkbook(QString::fromLocal8Bit(argv[2]));
     }
 
-    if (self || ui) {
+    if (self || ui || user) {
         qputenv("QT_QPA_PLATFORM", "offscreen");
         QApplication app(argc, argv);
         app.setAttribute(Qt::AA_DontShowIconsInMenus, false);
@@ -39,6 +41,8 @@ int main(int argc, char *argv[])
         int rc = 0;
         if (self)
             rc = runSelfTest();
+        if (rc == 0 && user)
+            rc = runUserAudit();
         if (rc == 0 && ui) {
             qputenv("ARBUZ_NO_PLUGINS", "1");
             Theme::applyPreset(QStringLiteral("white"));

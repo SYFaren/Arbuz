@@ -87,7 +87,7 @@ void buildDemoWorkbook(Workbook *wb)
         QStringLiteral("Кросс-листовые формулы"),
         QStringLiteral("Лист Cross и Formulas!B2"),
         QStringLiteral("Копировать / вставить со стилями"),
-        QStringLiteral("Formats → выделить A2:D4 → Ctrl+C / Ctrl+V"),
+        QStringLiteral("Formats → выделить A14:D16 → Ctrl+C / Ctrl+V"),
         QStringLiteral("Fill handle, Ctrl+D / Ctrl+R"),
         QStringLiteral("Formulas: потянуть угол A8, Ctrl+D в Data"),
         QStringLiteral("Undo / Redo"),
@@ -143,12 +143,12 @@ void buildDemoWorkbook(Workbook *wb)
         wb->setRaw(sh, 7, 0, QStringLiteral("10"));
         wb->setRaw(sh, 8, 0, QStringLiteral("20"));
         wb->setRaw(sh, 9, 0, QStringLiteral("30"));
-        header(wb, sh, 4, 0, QStringLiteral("товар"));
-        header(wb, sh, 4, 1, QStringLiteral("цена"));
-        wb->setRaw(sh, 5, 0, QStringLiteral("яблоко"));
-        wb->setRaw(sh, 5, 1, QStringLiteral("50"));
-        wb->setRaw(sh, 6, 0, QStringLiteral("груша"));
-        wb->setRaw(sh, 6, 1, QStringLiteral("40"));
+        header(wb, sh, 4, 4, QStringLiteral("товар"));
+        header(wb, sh, 4, 5, QStringLiteral("цена"));
+        wb->setRaw(sh, 5, 4, QStringLiteral("яблоко"));
+        wb->setRaw(sh, 5, 5, QStringLiteral("50"));
+        wb->setRaw(sh, 6, 4, QStringLiteral("груша"));
+        wb->setRaw(sh, 6, 5, QStringLiteral("40"));
         note(wb, sh, 10, 0, QStringLiteral("FINDME — для поиска Ctrl+F"));
     }
 
@@ -196,7 +196,7 @@ void buildDemoWorkbook(Workbook *wb)
         copyBlock.bold = true;
         copyBlock.background = QColor(QStringLiteral("#fff3cd"));
         copyBlock.numFmt = NumFormat::Thousands2;
-        for (int r = 2; r <= 4; ++r)
+        for (int r = 13; r <= 15; ++r)
             for (int c = 0; c <= 3; ++c) {
                 CellData d = copyBlock;
                 d.raw = QStringLiteral("R%1C%2").arg(r).arg(c);
@@ -250,11 +250,12 @@ void buildDemoWorkbook(Workbook *wb)
         chart.srcC1 = 0;
         chart.srcR2 = 5;
         chart.srcC2 = 1;
-        chart.posX = 280;
-        chart.posY = 40;
-        chart.widthPx = 380;
-        chart.heightPx = 240;
+        chart.posX = 170;
+        chart.posY = 30;
+        chart.widthPx = 340;
+        chart.heightPx = 250;
         chart.title = QStringLiteral("Продажи (демо)");
+        chart.showLegend = true;
         wb->sheet(sh).charts.append(chart);
     }
 
@@ -293,5 +294,6 @@ void buildDemoWorkbook(Workbook *wb)
         note(wb, sh, 14, 0, QStringLiteral("Freeze: 1 строка + 1 столбец; merge B2:C2"));
     }
 
+    wb->recalculate();
     wb->setUndoEnabled(true);
 }

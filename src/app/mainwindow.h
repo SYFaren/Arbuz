@@ -18,6 +18,10 @@ class QPoint;
 class QLineEdit;
 class QToolBar;
 
+class QResizeEvent;
+class QShowEvent;
+class QEvent;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -28,6 +32,9 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
 private slots:
     void newFile();
