@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     app.setAttribute(Qt::AA_DontShowIconsInMenus, false);
     app.setApplicationName(QStringLiteral("Arbuz"));
-    app.setApplicationVersion(QStringLiteral("0.1.0"));
+    app.setApplicationVersion(QStringLiteral("1.0.0"));
     app.setOrganizationName(QStringLiteral("SYFaren"));
     app.setOrganizationDomain(QStringLiteral("syfaren"));
     app.setWindowIcon(ArbuzIcon::app());
