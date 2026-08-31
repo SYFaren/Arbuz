@@ -2,6 +2,7 @@
 
 #include "arbuzicon.h"
 #include "cellref.h"
+#include "clipdata.h"
 #include "fileio.h"
 #include "formulaengine.h"
 #include "i18n.h"
@@ -19,11 +20,13 @@
 #include <QFile>
 #include <QIcon>
 #include <QMenu>
+#include <QMimeData>
 #include <QPixmap>
 #include <QSet>
 #include <QTemporaryDir>
 #include <QUndoStack>
 #include <cstdio>
+#include <memory>
 
 static int g_fails = 0;
 static int g_ok = 0;
@@ -722,6 +725,107 @@ static void testPythonPlugins()
     qputenv("ARBUZ_NO_PLUGINS", "1");
 }
 
+static void testNewFeatures()
+{
+    {
+        QString f = QStringLiteral("=A1+B2");
+        int pos = 2;
+        f = CellRef::cycleReferenceAt(f, pos, &pos);
+        ok(f.contains(QStringLiteral("$A$1")), QStringLiteral("F4 cycle to $A$1"));
+        f = CellRef::cycleReferenceAt(f, pos, &pos);
+        ok(f.contains(QStringLiteral("A$1")), QStringLiteral("F4 cycle to A$1"));
+        f = CellRef::cycleReferenceAt(f, pos, &pos);
+        ok(f.contains(QStringLiteral("$A1")), QStringLiteral("F4 cycle to $A1"));
+        f = CellRef::cycleReferenceAt(f, pos, &pos);
+        ok(f.contains(QStringLiteral("A1")) && !f.contains(QLatin1Char('$')),
+           QStringLiteral("F4 cycle back to A1"));
+    }
+
+    {
+        CellData src;
+        src.raw = QStringLiteral("=A1+1");
+        src.bold = true;
+        src.background = QColor(QStringLiteral("#ffeecc"));
+        src.numFmt = NumFormat::CurrencyRub;
+        const QVector<CellData> block{src};
+        std::unique_ptr<QMimeData> mime(ClipData::mimeFromBlock(1, 1, block, src.raw));
+        int rows = 0;
+        int cols = 0;
+        QVector<CellData> out;
+        QString tsv;
+        ok(ClipData::blockFromMime(mime.get(), &rows, &cols, &out, &tsv), QStringLiteral("clip mime parse"));
+        ok(rows == 1 && cols == 1 && out.size() == 1, QStringLiteral("clip block size"));
+        ok(out.at(0).bold && out.at(0).numFmt == NumFormat::CurrencyRub, QStringLiteral("clip keeps style"));
+        ok(out.at(0).background == src.background, QStringLiteral("clip keeps fill"));
+        const CellData pasted = ClipData::cellForPaste(out.at(0), 2, 1);
+        eq(pasted.raw, QStringLiteral("=B3+1"), "clip paste adjusts formula");
+    }
+
+    {
+        Workbook wb;
+        wb.addSheet(QStringLiteral("Two"));
+        wb.setRaw(0, 0, 0, QStringLiteral("alpha"));
+        wb.setRaw(0, 0, 1, QStringLiteral("beta"));
+        wb.setRaw(1, 0, 0, QStringLiteral("gamma"));
+        int sh = 0;
+        int r = 0;
+        int c = 0;
+        ok(wb.findNextInWorkbook(0, 0, -1, QStringLiteral("beta"), &sh, &r, &c, false),
+           QStringLiteral("workbook find sheet0"));
+        ok(sh == 0 && r == 0 && c == 1, QStringLiteral("workbook find beta coords"));
+        ok(wb.findNextInWorkbook(sh, r, c, QStringLiteral("gamma"), &sh, &r, &c, false),
+           QStringLiteral("workbook find next sheet"));
+        ok(sh == 1 && r == 0 && c == 0, QStringLiteral("workbook find gamma on sheet1"));
+        ok(wb.findPrevInWorkbook(sh, r, c, QStringLiteral("beta"), &sh, &r, &c, false),
+           QStringLiteral("workbook find prev"));
+        ok(sh == 0 && r == 0 && c == 1, QStringLiteral("workbook find prev beta"));
+    }
+
+    {
+        Workbook wb;
+        wb.setRaw(0, 0, 0, QStringLiteral("Item"));
+        wb.setRaw(0, 0, 1, QStringLiteral("Qty"));
+        wb.setRaw(0, 1, 0, QStringLiteral("Apple"));
+        wb.setRaw(0, 1, 1, QStringLiteral("3"));
+        wb.setRaw(0, 2, 0, QStringLiteral("Banana"));
+        wb.setRaw(0, 2, 1, QStringLiteral("5"));
+        wb.setAutoFilter(0, 0, 0, 1, 1, 2);
+        wb.setAutoFilterCriteria(0, 0, QStringLiteral("Apple"));
+        ok(wb.rowVisibleWithFilter(0, 0), QStringLiteral("autofilter header visible"));
+        ok(wb.rowVisibleWithFilter(0, 1), QStringLiteral("autofilter apple row visible"));
+        ok(!wb.rowVisibleWithFilter(0, 2), QStringLiteral("autofilter banana row hidden"));
+        wb.clearAutoFilter(0);
+        ok(wb.rowVisibleWithFilter(0, 2), QStringLiteral("autofilter clear shows all"));
+    }
+
+    eq(NumFormat::format(1234.5, NumFormat::CurrencyRub), QStringLiteral("1,234.50 ₽"), "currency rub");
+    eq(NumFormat::format(99.9, NumFormat::CurrencyUsd), QStringLiteral("$99.90"), "currency usd");
+    eq(NumFormat::format(42.0, NumFormat::CurrencyEur), QStringLiteral("42.00 €"), "currency eur");
+
+    QTemporaryDir tmp;
+    Workbook wb;
+    wb.setRaw(0, 0, 0, QStringLiteral("=1+2"));
+    wb.setRaw(0, 1, 0, QStringLiteral("plain"));
+    wb.sheet(0).rowHeights.insert(2, 36);
+    QString err;
+    const QString csv = tmp.filePath(QStringLiteral("formulas.csv"));
+    ok(FileIo::save(&wb, csv, &err), QStringLiteral("save csv formulas %1").arg(err));
+    QFile cf(csv);
+    ok(cf.open(QIODevice::ReadOnly | QIODevice::Text), QStringLiteral("open csv"));
+    const QString csvBody = QString::fromUtf8(cf.readAll());
+    ok(csvBody.contains(QStringLiteral("=1+2")), QStringLiteral("csv keeps formula text"));
+    Workbook csvWb;
+    ok(FileIo::load(&csvWb, csv, &err), QStringLiteral("reload csv formulas"));
+    eq(csvWb.sheet(0).cell(0, 0).raw, QStringLiteral("=1+2"), "csv formula roundtrip raw");
+
+    const QString xlsx = tmp.filePath(QStringLiteral("rows.xlsx"));
+    ok(FileIo::save(&wb, xlsx, &err), QStringLiteral("save xlsx row heights %1").arg(err));
+    Workbook xlsxWb;
+    ok(FileIo::load(&xlsxWb, xlsx, &err), QStringLiteral("load xlsx row heights %1").arg(err));
+    ok(xlsxWb.sheet(0).rowHeights.value(2) == 36, QStringLiteral("xlsx row height roundtrip"));
+    eq(xlsxWb.displayText(0, 0, 0), QStringLiteral("3"), "xlsx formula still evaluates after deflate");
+}
+
 int runSelfTest()
 {
     g_fails = 0;
@@ -734,6 +838,7 @@ int runSelfTest()
     testSheetModel();
     testFileIo();
     testXlsxContract();
+    testNewFeatures();
     testThemeAndI18n();
     testIcons();
     testPluginBridge();

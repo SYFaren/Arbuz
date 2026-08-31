@@ -56,14 +56,28 @@ static QByteArray deflateBytes(const QByteArray &raw)
 {
     if (raw.isEmpty())
         return {};
-    const uLong bound = compressBound(uLong(raw.size()));
-    QByteArray out(int(bound), Qt::Uninitialized);
-    uLongf destLen = bound;
-    if (compress2(reinterpret_cast<Bytef *>(out.data()), &destLen,
-                  reinterpret_cast<const Bytef *>(raw.constData()), uLong(raw.size()), Z_DEFAULT_COMPRESSION)
-        != Z_OK)
+    z_stream st;
+    std::memset(&st, 0, sizeof(st));
+    if (deflateInit2(&st, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 8, Z_DEFAULT_STRATEGY) != Z_OK)
         return {};
-    out.resize(int(destLen));
+    st.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(raw.data()));
+    st.avail_in = uInt(raw.size());
+    QByteArray out;
+    out.resize(qMax(64, raw.size() / 2 + 64));
+    int ret = Z_OK;
+    while (ret != Z_STREAM_END) {
+        if (st.total_out >= uLong(out.size()))
+            out.resize(out.size() * 2 + 64);
+        st.next_out = reinterpret_cast<Bytef *>(out.data() + st.total_out);
+        st.avail_out = uInt(out.size() - int(st.total_out));
+        ret = deflate(&st, Z_FINISH);
+        if (ret != Z_OK && ret != Z_STREAM_END) {
+            deflateEnd(&st);
+            return {};
+        }
+    }
+    out.resize(int(st.total_out));
+    deflateEnd(&st);
     return out;
 }
 
@@ -420,6 +434,10 @@ QByteArray sheetXml(const Worksheet &ws, const QVector<int> &xfOfCell, const QHa
         const int row = int(it.key() >> 32);
         const int col = int(it.key() & 0xffffffffu);
         rows[row].append(qMakePair(col, it.value()));
+    }
+    for (int row : ws.rowHeights.keys()) {
+        if (!rows.contains(row))
+            rows[row] = {};
     }
     for (auto rit = rows.begin(); rit != rows.end(); ++rit) {
         xml += "<row r=\"" + QByteArray::number(rit.key() + 1) + "\"";

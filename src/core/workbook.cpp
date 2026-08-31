@@ -972,23 +972,28 @@ bool Workbook::findNextInWorkbook(int startSheet, int fromRow, int fromCol, cons
         return false;
     const int n = m_sheets.size();
     startSheet = qBound(0, startSheet, n - 1);
-    for (int pass = 0; pass < (wrap ? 2 : 1); ++pass) {
-        const int sBegin = pass == 0 ? startSheet : 0;
-        const int sEnd = pass == 0 ? n - 1 : startSheet;
-        for (int s = sBegin; s <= sEnd; ++s) {
-            const int fr = (s == startSheet && pass == 0) ? fromRow : 0;
-            const int fc = (s == startSheet && pass == 0) ? fromCol : -1;
-            int r = 0;
-            int c = 0;
-            if (findNext(s, needle, fr, fc, &r, &c, true)) {
-                *sheet = s;
-                *row = r;
-                *col = c;
-                return true;
-            }
+
+    if (findNext(startSheet, needle, fromRow, fromCol, row, col, false)) {
+        *sheet = startSheet;
+        return true;
+    }
+    for (int s = startSheet + 1; s < n; ++s) {
+        if (findNext(s, needle, 0, -1, row, col, false)) {
+            *sheet = s;
+            return true;
         }
-        if (!wrap)
-            break;
+    }
+    if (!wrap)
+        return false;
+    for (int s = 0; s < startSheet; ++s) {
+        if (findNext(s, needle, 0, -1, row, col, false)) {
+            *sheet = s;
+            return true;
+        }
+    }
+    if (findNext(startSheet, needle, 0, -1, row, col, true)) {
+        *sheet = startSheet;
+        return true;
     }
     return false;
 }
@@ -1000,23 +1005,30 @@ bool Workbook::findPrevInWorkbook(int startSheet, int fromRow, int fromCol, cons
         return false;
     const int n = m_sheets.size();
     startSheet = qBound(0, startSheet, n - 1);
-    for (int pass = 0; pass < (wrap ? 2 : 1); ++pass) {
-        const int sBegin = pass == 0 ? startSheet : n - 1;
-        const int sEnd = pass == 0 ? 0 : startSheet;
-        for (int s = sBegin; s >= sEnd; --s) {
-            const int fr = (s == startSheet && pass == 0) ? fromRow : m_sheets.at(s).rowCount - 1;
-            const int fc = (s == startSheet && pass == 0) ? fromCol : m_sheets.at(s).colCount;
-            int r = 0;
-            int c = 0;
-            if (findPrev(s, needle, fr, fc, &r, &c, true)) {
-                *sheet = s;
-                *row = r;
-                *col = c;
-                return true;
-            }
+
+    if (findPrev(startSheet, needle, fromRow, fromCol, row, col, false)) {
+        *sheet = startSheet;
+        return true;
+    }
+    for (int s = startSheet - 1; s >= 0; --s) {
+        const Worksheet &ws = m_sheets.at(s);
+        if (findPrev(s, needle, ws.rowCount - 1, ws.colCount - 1, row, col, false)) {
+            *sheet = s;
+            return true;
         }
-        if (!wrap)
-            break;
+    }
+    if (!wrap)
+        return false;
+    for (int s = n - 1; s > startSheet; --s) {
+        const Worksheet &ws = m_sheets.at(s);
+        if (findPrev(s, needle, ws.rowCount - 1, ws.colCount - 1, row, col, false)) {
+            *sheet = s;
+            return true;
+        }
+    }
+    if (findPrev(startSheet, needle, fromRow, fromCol, row, col, true)) {
+        *sheet = startSheet;
+        return true;
     }
     return false;
 }
@@ -1072,7 +1084,8 @@ bool Workbook::rowVisibleWithFilter(int sheetIndex, int row) const
         const QString crit = f.criteria.value(c);
         if (crit.isEmpty())
             continue;
-        const QString text = displayText(sheetIndex, row, c);
+        const CellData cell = ws.cell(row, c);
+        const QString text = cell.raw.isEmpty() ? displayText(sheetIndex, row, c) : cell.raw;
         if (!text.contains(crit, Qt::CaseInsensitive))
             return false;
     }
