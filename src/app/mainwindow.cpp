@@ -5,6 +5,7 @@
 #include "chartwidget.h"
 #include "clipdata.h"
 #include "creditsdialog.h"
+#include "demo.h"
 #include "fileio.h"
 #include "firstrunwizard.h"
 #include "formulaengine.h"
@@ -722,6 +723,26 @@ bool MainWindow::openPath(const QString &path)
     PluginHost::instance().notifyEvent(QStringLiteral("workbook_opened"),
                                        QJsonObject{{QStringLiteral("path"), path}});
     return true;
+}
+
+void MainWindow::openDemo()
+{
+    if (!confirmSave())
+        return;
+    buildDemoWorkbook(m_wb);
+    m_path.clear();
+    m_dirty = false;
+    setWindowTitle(QStringLiteral("Arbuz — demo"));
+    rebuildSheetTabs();
+    for (int i = 0; i < m_wb->sheetCount(); ++i) {
+        if (m_wb->sheet(i).name == QStringLiteral("Charts")) {
+            if (m_tabs)
+                m_tabs->setCurrentIndex(i);
+            break;
+        }
+    }
+    PluginHost::instance().notifyEvent(QStringLiteral("workbook_opened"),
+                                       QJsonObject{{QStringLiteral("path"), QStringLiteral("demo")}});
 }
 
 bool MainWindow::saveFile()

@@ -24,6 +24,7 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     bool openPath(const QString &path);
+    void openDemo();
 
 protected:
     void closeEvent(QCloseEvent *event) override;
