@@ -116,6 +116,12 @@ QString format(double n, int id)
     }
     case DateTime:
         return ExcelDate::formatDateTime(n);
+    case CurrencyRub:
+        return groupedFixed(n, 2) + QStringLiteral(" ₽");
+    case CurrencyUsd:
+        return QStringLiteral("$") + groupedFixed(n, 2);
+    case CurrencyEur:
+        return groupedFixed(n, 2) + QStringLiteral(" €");
     case General:
     default:
         if (std::floor(n) == n && std::fabs(n) < 1e12)

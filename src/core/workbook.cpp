@@ -964,3 +964,117 @@ bool Workbook::usedCorner(int sheetIndex, int *row, int *col) const
     *col = c;
     return any;
 }
+
+bool Workbook::findNextInWorkbook(int startSheet, int fromRow, int fromCol, const QString &needle, int *sheet,
+                                  int *row, int *col, bool wrap) const
+{
+    if (!sheet || !row || !col || needle.isEmpty() || m_sheets.isEmpty())
+        return false;
+    const int n = m_sheets.size();
+    startSheet = qBound(0, startSheet, n - 1);
+    for (int pass = 0; pass < (wrap ? 2 : 1); ++pass) {
+        const int sBegin = pass == 0 ? startSheet : 0;
+        const int sEnd = pass == 0 ? n - 1 : startSheet;
+        for (int s = sBegin; s <= sEnd; ++s) {
+            const int fr = (s == startSheet && pass == 0) ? fromRow : 0;
+            const int fc = (s == startSheet && pass == 0) ? fromCol : -1;
+            int r = 0;
+            int c = 0;
+            if (findNext(s, needle, fr, fc, &r, &c, true)) {
+                *sheet = s;
+                *row = r;
+                *col = c;
+                return true;
+            }
+        }
+        if (!wrap)
+            break;
+    }
+    return false;
+}
+
+bool Workbook::findPrevInWorkbook(int startSheet, int fromRow, int fromCol, const QString &needle, int *sheet,
+                                  int *row, int *col, bool wrap) const
+{
+    if (!sheet || !row || !col || needle.isEmpty() || m_sheets.isEmpty())
+        return false;
+    const int n = m_sheets.size();
+    startSheet = qBound(0, startSheet, n - 1);
+    for (int pass = 0; pass < (wrap ? 2 : 1); ++pass) {
+        const int sBegin = pass == 0 ? startSheet : n - 1;
+        const int sEnd = pass == 0 ? 0 : startSheet;
+        for (int s = sBegin; s >= sEnd; --s) {
+            const int fr = (s == startSheet && pass == 0) ? fromRow : m_sheets.at(s).rowCount - 1;
+            const int fc = (s == startSheet && pass == 0) ? fromCol : m_sheets.at(s).colCount;
+            int r = 0;
+            int c = 0;
+            if (findPrev(s, needle, fr, fc, &r, &c, true)) {
+                *sheet = s;
+                *row = r;
+                *col = c;
+                return true;
+            }
+        }
+        if (!wrap)
+            break;
+    }
+    return false;
+}
+
+void Workbook::setAutoFilter(int sheetIndex, int headerRow, int c1, int c2, int dataR1, int dataR2)
+{
+    if (sheetIndex < 0 || sheetIndex >= m_sheets.size())
+        return;
+    Worksheet &ws = m_sheets[sheetIndex];
+    ws.autoFilter.active = true;
+    ws.autoFilter.headerRow = headerRow;
+    ws.autoFilter.c1 = qMin(c1, c2);
+    ws.autoFilter.c2 = qMax(c1, c2);
+    ws.autoFilter.dataR1 = qMin(dataR1, dataR2);
+    ws.autoFilter.dataR2 = qMax(dataR1, dataR2);
+    ws.autoFilter.criteria.clear();
+    emit contentsChanged();
+}
+
+void Workbook::clearAutoFilter(int sheetIndex)
+{
+    if (sheetIndex < 0 || sheetIndex >= m_sheets.size())
+        return;
+    m_sheets[sheetIndex].autoFilter = AutoFilterState{};
+    emit contentsChanged();
+}
+
+void Workbook::setAutoFilterCriteria(int sheetIndex, int col, const QString &criteria)
+{
+    if (sheetIndex < 0 || sheetIndex >= m_sheets.size())
+        return;
+    Worksheet &ws = m_sheets[sheetIndex];
+    if (!ws.autoFilter.active)
+        return;
+    if (criteria.isEmpty())
+        ws.autoFilter.criteria.remove(col);
+    else
+        ws.autoFilter.criteria.insert(col, criteria);
+    emit contentsChanged();
+}
+
+bool Workbook::rowVisibleWithFilter(int sheetIndex, int row) const
+{
+    if (sheetIndex < 0 || sheetIndex >= m_sheets.size())
+        return true;
+    const Worksheet &ws = m_sheets[sheetIndex];
+    const AutoFilterState &f = ws.autoFilter;
+    if (!f.active || row <= f.headerRow)
+        return true;
+    if (row < f.dataR1 || row > f.dataR2)
+        return true;
+    for (int c = f.c1; c <= f.c2; ++c) {
+        const QString crit = f.criteria.value(c);
+        if (crit.isEmpty())
+            continue;
+        const QString text = displayText(sheetIndex, row, c);
+        if (!text.contains(crit, Qt::CaseInsensitive))
+            return false;
+    }
+    return true;
+}

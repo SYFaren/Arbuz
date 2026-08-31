@@ -4,9 +4,12 @@
 #include <QMainWindow>
 #include <QModelIndex>
 
+#include "chart.h"
+
 class Workbook;
 class SheetModel;
 class SheetView;
+class ChartWidget;
 class QTabBar;
 class QToolButton;
 class QActionGroup;
@@ -79,8 +82,19 @@ private slots:
     void setNumFmtDate();
     void setNumFmtDateTime();
     void setNumFmtTime();
+    void setNumFmtCurrencyRub();
+    void setNumFmtCurrencyUsd();
+    void setNumFmtCurrencyEur();
     void toggleBorder();
     void formulaBarCommit();
+    void cycleFormulaReference();
+    void toggleAutoFilter();
+    void filterColumn();
+    void clearAutoFilter();
+    void insertColumnChart();
+    void insertBarChart();
+    void insertLineChart();
+    void insertPieChart();
     void nameBoxCommit();
     void fillDown();
     void fillRight();
@@ -92,8 +106,14 @@ private:
     void switchToSheet(int index);
     void saveColumnWidths();
     void restoreColumnWidths();
+    void saveRowHeights();
+    void restoreRowHeights();
     void setupSheetView();
     void applyMerges();
+    void applyFilterVisibility();
+    void rebuildCharts();
+    void repositionCharts();
+    void insertChart(ChartObject::Type type);
     QMenu *functionMenu(QWidget *parent);
     void insertFunction(const QString &name);
     QString selectedRangeA1() const;
@@ -129,6 +149,8 @@ private:
     int m_copyCol = 0;
     bool m_copyHasOrigin = false;
     QString m_findNeedle;
+    int m_findSheet = 0;
+    QVector<ChartWidget *> m_chartWidgets;
 };
 
 #endif

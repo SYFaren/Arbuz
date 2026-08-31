@@ -421,4 +421,80 @@ QString shiftFormulaDeleteCol(const QString &formula, const QString &formulaShee
     });
 }
 
+static Addr cycleAbsFlags(const Addr &a)
+{
+    Addr b = a;
+    if (!b.absRow && !b.absCol) {
+        b.absRow = true;
+        b.absCol = true;
+    } else if (b.absRow && b.absCol) {
+        b.absRow = true;
+        b.absCol = false;
+    } else if (b.absRow && !b.absCol) {
+        b.absRow = false;
+        b.absCol = true;
+    } else {
+        b.absRow = false;
+        b.absCol = false;
+    }
+    return b;
+}
+
+QString cycleReferenceAt(const QString &formula, int cursorPos, int *newCursorPos)
+{
+    if (!formula.startsWith(QLatin1Char('=')))
+        return formula;
+    int i = 1;
+    while (i < formula.size()) {
+        const QChar ch = formula.at(i);
+        if (ch == QLatin1Char('"')) {
+            ++i;
+            while (i < formula.size()) {
+                if (formula.at(i) == QLatin1Char('"')) {
+                    ++i;
+                    if (i < formula.size() && formula.at(i) == QLatin1Char('"'))
+                        ++i;
+                    else
+                        break;
+                } else {
+                    ++i;
+                }
+            }
+            continue;
+        }
+        const int start = i;
+        QString sheet;
+        int used = 0;
+        if (parseSheetPrefix(formula, i, &sheet, &used))
+            i += used;
+        Addr a;
+        int body = 0;
+        if (!parseAddrBody(formula, i, &a, &body)) {
+            ++i;
+            continue;
+        }
+        a.sheet = sheet;
+        int end = i + body;
+        Addr b = a;
+        if (end < formula.size() && formula.at(end) == QLatin1Char(':')) {
+            int body2 = 0;
+            if (parseAddrBody(formula, end + 1, &b, &body2)) {
+                b.sheet = sheet;
+                end = end + 1 + body2;
+            }
+        }
+        if (cursorPos >= start && cursorPos <= end) {
+            const Addr na = cycleAbsFlags(a);
+            const Addr nb = cycleAbsFlags(b);
+            const QString rep = (na.row != nb.row || na.col != nb.col) ? formatRange(na, nb) : formatAddr(na);
+            const QString out = formula.left(start) + rep + formula.mid(end);
+            if (newCursorPos)
+                *newCursorPos = start + rep.size();
+            return out;
+        }
+        i = end;
+    }
+    return formula;
+}
+
 }

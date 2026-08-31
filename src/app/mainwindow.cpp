@@ -2,6 +2,8 @@
 #include "appsettings.h"
 #include "arbuzicon.h"
 #include "cellref.h"
+#include "chartwidget.h"
+#include "clipdata.h"
 #include "creditsdialog.h"
 #include "fileio.h"
 #include "firstrunwizard.h"
@@ -48,6 +50,8 @@
 #include <QPainter>
 #include <QPrintDialog>
 #include <QPrinter>
+#include <QShortcut>
+#include <QScrollBar>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -81,6 +85,9 @@ MainWindow::MainWindow(QWidget *parent)
     m_formulaBar = new QLineEdit(formulaRow);
     m_formulaBar->setObjectName(QStringLiteral("formulaBar"));
     connect(m_formulaBar, &QLineEdit::returnPressed, this, &MainWindow::formulaBarCommit);
+    auto *f4 = new QShortcut(QKeySequence(Qt::Key_F4), m_formulaBar);
+    f4->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(f4, &QShortcut::activated, this, &MainWindow::cycleFormulaReference);
     fl->addWidget(m_nameBox);
     fl->addWidget(m_formulaBar, 1);
     lay->addWidget(formulaRow);
@@ -218,6 +225,12 @@ MainWindow::MainWindow(QWidget *parent)
         act->setIconVisibleInMenu(true);
         connect(act, &QAction::triggered, this, [this, name]() { insertFunction(name); });
     }
+    insertMenu->addSeparator();
+    auto *chartMenu = insertMenu->addMenu(I18n::t("ui.chart"));
+    chartMenu->addAction(I18n::t("ui.chart_column"), this, &MainWindow::insertColumnChart);
+    chartMenu->addAction(I18n::t("ui.chart_bar"), this, &MainWindow::insertBarChart);
+    chartMenu->addAction(I18n::t("ui.chart_line"), this, &MainWindow::insertLineChart);
+    chartMenu->addAction(I18n::t("ui.chart_pie"), this, &MainWindow::insertPieChart);
 
     auto *fmtMenu = menuBar()->addMenu(I18n::t("ui.format"));
     iconize(fmtMenu->addAction(I18n::t("ui.bold"), QKeySequence::Bold, this, &MainWindow::toggleBold),
@@ -258,6 +271,13 @@ MainWindow::MainWindow(QWidget *parent)
     iconize(numMenu->addAction(I18n::t("ui.date_and_time"), this, &MainWindow::setNumFmtDateTime),
             QStringLiteral("fx"));
     iconize(numMenu->addAction(I18n::t("ui.time"), this, &MainWindow::setNumFmtTime), QStringLiteral("fx"));
+    numMenu->addSeparator();
+    iconize(numMenu->addAction(I18n::t("ui.currency_rub"), this, &MainWindow::setNumFmtCurrencyRub),
+            QStringLiteral("fx"));
+    iconize(numMenu->addAction(I18n::t("ui.currency_usd"), this, &MainWindow::setNumFmtCurrencyUsd),
+            QStringLiteral("fx"));
+    iconize(numMenu->addAction(I18n::t("ui.currency_eur"), this, &MainWindow::setNumFmtCurrencyEur),
+            QStringLiteral("fx"));
     fmtMenu->addSeparator();
     iconize(fmtMenu->addAction(I18n::t("ui.merge_cells"), this, &MainWindow::mergeSelection),
             QStringLiteral("add-sheet"));
@@ -286,6 +306,13 @@ MainWindow::MainWindow(QWidget *parent)
             QStringLiteral("goto"));
     iconize(viewMenu->addAction(I18n::t("ui.sort_z_a"), this, &MainWindow::sortDesc),
             QStringLiteral("goto"));
+    viewMenu->addSeparator();
+    iconize(viewMenu->addAction(I18n::t("ui.auto_filter"), this, &MainWindow::toggleAutoFilter),
+            QStringLiteral("find"));
+    iconize(viewMenu->addAction(I18n::t("ui.filter_column"), this, &MainWindow::filterColumn),
+            QStringLiteral("find"));
+    iconize(viewMenu->addAction(I18n::t("ui.clear_filter"), this, &MainWindow::clearAutoFilter),
+            QStringLiteral("clear"));
     viewMenu->addSeparator();
     iconize(viewMenu->addAction(I18n::t("ui.settings"), this, &MainWindow::showSettings),
             QStringLiteral("settings"));
@@ -330,6 +357,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_wb, &Workbook::contentsChanged, this, [this]() {
         m_dirty = true;
         updateStatus();
+        for (ChartWidget *w : m_chartWidgets)
+            w->update();
+        repositionCharts();
     });
     connect(m_wb, &Workbook::structureChanged, this, &MainWindow::rebuildSheetTabs);
     connect(m_wb, &Workbook::cellEdited, this, [](int sh, int r, int c) {
@@ -462,10 +492,14 @@ void MainWindow::switchToSheet(int index)
         return;
     if (m_model->sheetIndex() != index) {
         saveColumnWidths();
+        saveRowHeights();
         m_model->setSheetIndex(index);
         restoreColumnWidths();
+        restoreRowHeights();
         applyMerges();
         m_view->setFrozen(m_wb->sheet(index).freezeRows, m_wb->sheet(index).freezeCols);
+        rebuildCharts();
+        applyFilterVisibility();
     }
     onSelectionChanged();
     updateStatus();
@@ -772,14 +806,21 @@ void MainWindow::copy()
         minC = qMin(minC, i.column());
         maxC = qMax(maxC, i.column());
     }
+    const int sh = currentSheet();
     QStringList rows;
+    QVector<CellData> cells;
+    cells.reserve((maxR - minR + 1) * (maxC - minC + 1));
     for (int r = minR; r <= maxR; ++r) {
         QStringList cols;
-        for (int c = minC; c <= maxC; ++c)
-            cols.append(m_view->model()->index(r, c).data(Qt::EditRole).toString());
+        for (int c = minC; c <= maxC; ++c) {
+            const CellData cell = m_wb->sheet(sh).cell(r, c);
+            cells.append(cell);
+            cols.append(cell.raw);
+        }
         rows.append(cols.join(QLatin1Char('\t')));
     }
-    QApplication::clipboard()->setText(rows.join(QLatin1Char('\n')));
+    QApplication::clipboard()->setMimeData(
+        ClipData::mimeFromBlock(maxR - minR + 1, maxC - minC + 1, cells, rows.join(QLatin1Char('\n'))));
     m_copyRow = minR;
     m_copyCol = minC;
     m_copyHasOrigin = true;
@@ -789,25 +830,41 @@ void MainWindow::paste()
 {
     if (!m_view || !m_view->currentIndex().isValid())
         return;
-    const QString text = QApplication::clipboard()->text();
+    const QMimeData *mime = QApplication::clipboard()->mimeData();
+    int blockRows = 0;
+    int blockCols = 0;
+    QVector<CellData> cells;
+    QString tsv;
+    const bool hasBlock = ClipData::blockFromMime(mime, &blockRows, &blockCols, &cells, &tsv);
     const int r0 = m_view->currentIndex().row();
     const int c0 = m_view->currentIndex().column();
     const int dRow = m_copyHasOrigin ? r0 - m_copyRow : 0;
     const int dCol = m_copyHasOrigin ? c0 - m_copyCol : 0;
-    const QStringList rows = text.split(QLatin1Char('\n'));
+    const int sh = currentSheet();
     m_wb->beginUndoMacro(I18n::t("ui.paste_2"));
-    for (int i = 0; i < rows.size(); ++i) {
-        if (rows.at(i).isEmpty() && i == rows.size() - 1)
-            continue;
-        const QStringList cols = rows.at(i).split(QLatin1Char('\t'));
-        for (int j = 0; j < cols.size(); ++j) {
-            QString v = cols.at(j);
-            if (m_copyHasOrigin && v.startsWith(QLatin1Char('=')))
-                v = CellRef::adjustFormula(v, dRow, dCol);
-            m_view->model()->setData(m_view->model()->index(r0 + i, c0 + j), v, Qt::EditRole);
+    if (hasBlock && !cells.isEmpty()) {
+        for (int i = 0; i < blockRows; ++i) {
+            for (int j = 0; j < blockCols; ++j) {
+                const CellData pasted = ClipData::cellForPaste(cells.at(i * blockCols + j), dRow, dCol);
+                m_wb->setCellData(sh, r0 + i, c0 + j, pasted);
+            }
+        }
+    } else if (!tsv.isEmpty()) {
+        const QStringList rows = tsv.split(QLatin1Char('\n'));
+        for (int i = 0; i < rows.size(); ++i) {
+            if (rows.at(i).isEmpty() && i == rows.size() - 1)
+                continue;
+            const QStringList cols = rows.at(i).split(QLatin1Char('\t'));
+            for (int j = 0; j < cols.size(); ++j) {
+                QString v = cols.at(j);
+                if (m_copyHasOrigin && v.startsWith(QLatin1Char('=')))
+                    v = CellRef::adjustFormula(v, dRow, dCol);
+                m_view->model()->setData(m_view->model()->index(r0 + i, c0 + j), v, Qt::EditRole);
+            }
         }
     }
     m_wb->endUndoMacro();
+    applyFilterVisibility();
 }
 
 void MainWindow::cut()
@@ -820,9 +877,10 @@ void MainWindow::clearContents()
 {
     if (!m_view)
         return;
+    const int sh = currentSheet();
     const QModelIndexList idxs = m_view->selectionModel()->selectedIndexes();
     for (const QModelIndex &i : idxs)
-        m_view->model()->setData(i, QString(), Qt::EditRole);
+        m_wb->setCellData(sh, i.row(), i.column(), CellData{});
 }
 
 void MainWindow::findCell()
@@ -833,11 +891,21 @@ void MainWindow::findCell()
     if (!ok || needle.isEmpty() || currentSheet() < 0)
         return;
     m_findNeedle = needle;
+    int sh = currentSheet();
     int r = 0;
     int c = 0;
-    if (m_wb->findNext(currentSheet(), m_findNeedle, 0, -1, &r, &c, false))
+    int fr = 0;
+    int fc = -1;
+    if (m_view && m_view->currentIndex().isValid()) {
+        fr = m_view->currentIndex().row();
+        fc = m_view->currentIndex().column();
+    }
+    if (m_wb->findNextInWorkbook(sh, fr, fc, m_findNeedle, &sh, &r, &c, false)) {
+        m_findSheet = sh;
+        if (sh != currentSheet() && m_tabs)
+            m_tabs->setCurrentIndex(sh);
         revealCell(r, c);
-    else
+    } else
         statusBar()->showMessage(I18n::t("ui.not_found"), 3000);
 }
 
@@ -855,11 +923,15 @@ void MainWindow::findNextCell()
         fr = m_view->currentIndex().row();
         fc = m_view->currentIndex().column();
     }
+    int sh = currentSheet();
     int r = 0;
     int c = 0;
-    if (m_wb->findNext(currentSheet(), m_findNeedle, fr, fc, &r, &c, true))
+    if (m_wb->findNextInWorkbook(sh, fr, fc, m_findNeedle, &sh, &r, &c, true)) {
+        m_findSheet = sh;
+        if (sh != currentSheet() && m_tabs)
+            m_tabs->setCurrentIndex(sh);
         revealCell(r, c);
-    else
+    } else
         statusBar()->showMessage(I18n::t("ui.not_found"), 3000);
 }
 
@@ -877,11 +949,15 @@ void MainWindow::findPrevCell()
         fr = m_view->currentIndex().row();
         fc = m_view->currentIndex().column();
     }
+    int sh = currentSheet();
     int r = 0;
     int c = 0;
-    if (m_wb->findPrev(currentSheet(), m_findNeedle, fr, fc, &r, &c, true))
+    if (m_wb->findPrevInWorkbook(sh, fr, fc, m_findNeedle, &sh, &r, &c, true)) {
+        m_findSheet = sh;
+        if (sh != currentSheet() && m_tabs)
+            m_tabs->setCurrentIndex(sh);
         revealCell(r, c);
-    else
+    } else
         statusBar()->showMessage(I18n::t("ui.not_found"), 3000);
 }
 
@@ -1266,6 +1342,18 @@ void MainWindow::setNumFmtTime()
 {
     applyNumFmt(NumFormat::Time);
 }
+void MainWindow::setNumFmtCurrencyRub()
+{
+    applyNumFmt(NumFormat::CurrencyRub);
+}
+void MainWindow::setNumFmtCurrencyUsd()
+{
+    applyNumFmt(NumFormat::CurrencyUsd);
+}
+void MainWindow::setNumFmtCurrencyEur()
+{
+    applyNumFmt(NumFormat::CurrencyEur);
+}
 
 void MainWindow::toggleBorder()
 {
@@ -1327,16 +1415,21 @@ void MainWindow::replaceCell()
     Worksheet &ws = m_wb->sheet(currentSheet());
     m_wb->beginUndoMacro(I18n::t("ui.replace_2"));
     int n = 0;
-    for (int r = 0; r < ws.rowCount; ++r) {
-        for (int c = 0; c < ws.colCount; ++c) {
-            CellData d = ws.cell(r, c);
+    for (int s = 0; s < m_wb->sheetCount(); ++s) {
+        Worksheet &sheet = m_wb->sheet(s);
+        const QList<quint64> keys = sheet.cells.keys();
+        for (quint64 k : keys) {
+            const int r = int(k >> 32);
+            const int c = int(k & 0xffffffffu);
+            CellData d = sheet.cell(r, c);
             if (d.raw.contains(needle, Qt::CaseInsensitive)) {
                 d.raw.replace(needle, repl, Qt::CaseInsensitive);
-                m_wb->setCellData(currentSheet(), r, c, d);
+                m_wb->setCellData(s, r, c, d);
                 ++n;
             }
         }
     }
+    Q_UNUSED(ws);
     m_wb->endUndoMacro();
     statusBar()->showMessage(I18n::t("ui.replaced_1").arg(n), 3000);
 }
@@ -1350,23 +1443,207 @@ void MainWindow::printSheet()
     QPainter painter(&printer);
     const int sh = currentSheet();
     const Worksheet &ws = m_wb->sheet(sh);
-    const int rowH = 18;
-    const int colW = 72;
-    int y = 40;
-    painter.drawText(40, 24, ws.name);
-    const int rows = qMin(ws.rowCount, 60);
-    const int cols = qMin(ws.colCount, 12);
-    for (int r = 0; r < rows; ++r) {
-        for (int c = 0; c < cols; ++c) {
-            const QRect box(40 + c * colW, y, colW - 2, rowH);
+    int maxR = 0;
+    int maxC = 0;
+    if (!m_wb->usedCorner(sh, &maxR, &maxC))
+        return;
+
+    const int margin = 40;
+    const QRect page = printer.pageRect(QPrinter::DevicePixel).toRect();
+    const int rowH = 20;
+    const int colW = qMax(48, int((page.width() - margin * 2) / qMax(1, maxC + 1)));
+    int y = margin + 16;
+    painter.drawText(margin, margin, ws.name);
+
+    for (int r = 0; r <= maxR; ++r) {
+        int x = margin;
+        for (int c = 0; c <= maxC; ++c) {
+            const CellData cell = ws.cell(r, c);
+            const QRect box(x, y, colW - 2, rowH);
+            if (cell.background.isValid())
+                painter.fillRect(box, cell.background);
+            painter.setPen(QColor(160, 160, 160));
             painter.drawRect(box);
-            painter.drawText(box.adjusted(2, 0, -2, 0), Qt::AlignVCenter | Qt::AlignLeft,
-                             m_wb->displayText(sh, r, c));
+            QFont f = painter.font();
+            f.setBold(cell.bold);
+            f.setItalic(cell.italic);
+            painter.setFont(f);
+            painter.setPen(cell.foreground.isValid() ? cell.foreground : QColor(Qt::black));
+            Qt::Alignment align = Qt::AlignVCenter | Qt::AlignLeft;
+            if (cell.hAlign == 2)
+                align = Qt::AlignCenter;
+            else if (cell.hAlign == 3)
+                align = Qt::AlignRight | Qt::AlignVCenter;
+            painter.drawText(box.adjusted(2, 0, -2, 0), align, m_wb->displayText(sh, r, c));
+            x += colW;
         }
         y += rowH;
-        if (y > printer.pageRect(QPrinter::DevicePixel).height() - 40) {
+        if (y + rowH > page.height() - margin) {
             printer.newPage();
-            y = 40;
+            y = margin;
         }
+    }
+}
+
+void MainWindow::saveRowHeights()
+{
+    if (!m_view || !m_model)
+        return;
+    const int sh = m_model->sheetIndex();
+    if (sh < 0 || sh >= m_wb->sheetCount())
+        return;
+    Worksheet &ws = m_wb->sheet(sh);
+    ws.rowHeights.clear();
+    for (int r = 0; r < m_model->rowCount(); ++r)
+        ws.rowHeights.insert(r, m_view->rowHeight(r));
+}
+
+void MainWindow::restoreRowHeights()
+{
+    if (!m_view || !m_model)
+        return;
+    const int sh = m_model->sheetIndex();
+    if (sh < 0 || sh >= m_wb->sheetCount())
+        return;
+    const Worksheet &ws = m_wb->sheet(sh);
+    for (auto it = ws.rowHeights.cbegin(); it != ws.rowHeights.cend(); ++it)
+        m_view->setRowHeight(it.key(), it.value());
+}
+
+void MainWindow::cycleFormulaReference()
+{
+    if (!m_formulaBar || m_syncingFormula)
+        return;
+    QString text = m_formulaBar->text();
+    if (!text.startsWith(QLatin1Char('=')))
+        return;
+    const int pos = m_formulaBar->cursorPosition();
+    int newPos = pos;
+    text = CellRef::cycleReferenceAt(text, pos, &newPos);
+    m_formulaBar->setText(text);
+    m_formulaBar->setCursorPosition(newPos);
+}
+
+void MainWindow::applyFilterVisibility()
+{
+    if (!m_view || !m_model)
+        return;
+    const int sh = currentSheet();
+    for (int r = 0; r < m_model->rowCount(); ++r)
+        m_view->setRowHidden(r, !m_wb->rowVisibleWithFilter(sh, r));
+}
+
+void MainWindow::toggleAutoFilter()
+{
+    if (currentSheet() < 0)
+        return;
+    int r1 = 0, c1 = 0, r2 = 0, c2 = 0;
+    selectedBounds(&r1, &c1, &r2, &c2);
+    Worksheet &ws = m_wb->sheet(currentSheet());
+    if (ws.autoFilter.active) {
+        m_wb->clearAutoFilter(currentSheet());
+    } else {
+        m_wb->setAutoFilter(currentSheet(), r1, c1, c2, r1 + 1, r2);
+    }
+    applyFilterVisibility();
+}
+
+void MainWindow::filterColumn()
+{
+    if (currentSheet() < 0 || !m_view || !m_view->currentIndex().isValid())
+        return;
+    Worksheet &ws = m_wb->sheet(currentSheet());
+    if (!ws.autoFilter.active)
+        return;
+    const int col = m_view->currentIndex().column();
+    bool ok = false;
+    const QString crit = QInputDialog::getText(this, I18n::t("ui.filter_column"),
+                                               I18n::t("ui.filter_text"), QLineEdit::Normal,
+                                               ws.autoFilter.criteria.value(col), &ok);
+    if (!ok)
+        return;
+    m_wb->setAutoFilterCriteria(currentSheet(), col, crit.trimmed());
+    applyFilterVisibility();
+}
+
+void MainWindow::clearAutoFilter()
+{
+    if (currentSheet() < 0)
+        return;
+    m_wb->clearAutoFilter(currentSheet());
+    applyFilterVisibility();
+}
+
+void MainWindow::insertChart(ChartObject::Type type)
+{
+    if (currentSheet() < 0)
+        return;
+    int r1 = 0, c1 = 0, r2 = 0, c2 = 0;
+    selectedBounds(&r1, &c1, &r2, &c2);
+    if (r2 <= r1)
+        r2 = r1 + 4;
+    if (c2 <= c1)
+        c2 = c1 + 2;
+    ChartObject chart;
+    chart.type = type;
+    chart.srcR1 = r1;
+    chart.srcC1 = c1;
+    chart.srcR2 = r2;
+    chart.srcC2 = c2;
+    chart.anchorRow = qMax(0, r1);
+    chart.anchorCol = c2 + 1;
+    chart.title = m_wb->sheet(currentSheet()).name;
+    m_wb->sheet(currentSheet()).charts.append(chart);
+    rebuildCharts();
+}
+
+void MainWindow::insertColumnChart()
+{
+    insertChart(ChartObject::Column);
+}
+void MainWindow::insertBarChart()
+{
+    insertChart(ChartObject::Bar);
+}
+void MainWindow::insertLineChart()
+{
+    insertChart(ChartObject::Line);
+}
+void MainWindow::insertPieChart()
+{
+    insertChart(ChartObject::Pie);
+}
+
+void MainWindow::rebuildCharts()
+{
+    for (ChartWidget *w : m_chartWidgets)
+        w->deleteLater();
+    m_chartWidgets.clear();
+    if (!m_view || currentSheet() < 0)
+        return;
+    const Worksheet &ws = m_wb->sheet(currentSheet());
+    for (const ChartObject &chart : ws.charts) {
+        auto *w = new ChartWidget(m_wb, currentSheet(), chart, m_view->viewport());
+        w->show();
+        w->raise();
+        m_chartWidgets.append(w);
+    }
+    repositionCharts();
+}
+
+void MainWindow::repositionCharts()
+{
+    if (!m_view || !m_model)
+        return;
+    const Worksheet &ws = m_wb->sheet(currentSheet());
+    for (int i = 0; i < m_chartWidgets.size() && i < ws.charts.size(); ++i) {
+        ChartWidget *w = m_chartWidgets.at(i);
+        const ChartObject &chart = ws.charts.at(i);
+        const QModelIndex idx = m_model->index(chart.anchorRow, chart.anchorCol);
+        if (!idx.isValid())
+            continue;
+        const QRect rect = m_view->visualRect(idx);
+        w->move(rect.topLeft());
+        w->resize(chart.widthPx, chart.heightPx);
     }
 }

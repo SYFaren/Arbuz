@@ -40,6 +40,8 @@ QString shiftFormulaDeleteRow(const QString &formula, const QString &formulaShee
 QString shiftFormulaDeleteCol(const QString &formula, const QString &formulaSheet, const QString &targetSheet,
                               int at, int count);
 
+QString cycleReferenceAt(const QString &formula, int cursorPos, int *newCursorPos = nullptr);
+
 }
 
 #endif

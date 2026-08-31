@@ -16,7 +16,10 @@ enum Id {
     Scientific = 11,
     Date = 14,
     DateTime = 22,
-    Time = 20
+    Time = 20,
+    CurrencyRub = 164,
+    CurrencyUsd = 165,
+    CurrencyEur = 166
 };
 
 QString format(double n, int id);

@@ -1,6 +1,8 @@
 #ifndef ARBUZ_WORKBOOK_H
 #define ARBUZ_WORKBOOK_H
 
+#include "chart.h"
+
 #include <QColor>
 #include <QHash>
 #include <QObject>
@@ -16,6 +18,16 @@ struct MergeRange {
     int c1 = 0;
     int r2 = 0;
     int c2 = 0;
+};
+
+struct AutoFilterState {
+    bool active = false;
+    int headerRow = 0;
+    int c1 = 0;
+    int c2 = 0;
+    int dataR1 = 0;
+    int dataR2 = 0;
+    QHash<int, QString> criteria;
 };
 
 struct CellData {
@@ -41,11 +53,14 @@ class Worksheet
 {
 public:
     QString name;
-    int rowCount = 200;
-    int colCount = 40;
+    int rowCount = 1000;
+    int colCount = 64;
     QHash<quint64, CellData> cells;
     QHash<int, int> columnWidths;
+    QHash<int, int> rowHeights;
     QVector<MergeRange> merges;
+    QVector<ChartObject> charts;
+    AutoFilterState autoFilter;
     int freezeRows = 0;
     int freezeCols = 0;
 
@@ -89,7 +104,16 @@ public:
                   bool wrap) const;
     bool findPrev(int sheetIndex, const QString &needle, int fromRow, int fromCol, int *row, int *col,
                   bool wrap) const;
+    bool findNextInWorkbook(int startSheet, int fromRow, int fromCol, const QString &needle, int *sheet,
+                            int *row, int *col, bool wrap) const;
+    bool findPrevInWorkbook(int startSheet, int fromRow, int fromCol, const QString &needle, int *sheet,
+                            int *row, int *col, bool wrap) const;
     bool usedCorner(int sheetIndex, int *row, int *col) const;
+
+    void setAutoFilter(int sheetIndex, int headerRow, int c1, int c2, int dataR1, int dataR2);
+    void clearAutoFilter(int sheetIndex);
+    void setAutoFilterCriteria(int sheetIndex, int col, const QString &criteria);
+    bool rowVisibleWithFilter(int sheetIndex, int row) const;
 
     void mergeCells(int sheetIndex, int r1, int c1, int r2, int c2);
     void unmergeAt(int sheetIndex, int row, int col);

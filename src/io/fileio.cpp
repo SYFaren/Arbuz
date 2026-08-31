@@ -46,9 +46,26 @@ quint32 crc32Of(const QByteArray &data)
 struct ZipItem {
     QByteArray name;
     QByteArray data;
+    QByteArray payload;
     quint32 crc = 0;
     quint32 offset = 0;
+    quint16 method = 0;
 };
+
+static QByteArray deflateBytes(const QByteArray &raw)
+{
+    if (raw.isEmpty())
+        return {};
+    const uLong bound = compressBound(uLong(raw.size()));
+    QByteArray out(int(bound), Qt::Uninitialized);
+    uLongf destLen = bound;
+    if (compress2(reinterpret_cast<Bytef *>(out.data()), &destLen,
+                  reinterpret_cast<const Bytef *>(raw.constData()), uLong(raw.size()), Z_DEFAULT_COMPRESSION)
+        != Z_OK)
+        return {};
+    out.resize(int(destLen));
+    return out;
+}
 
 class StoreZip
 {
@@ -59,6 +76,13 @@ public:
         it.name = name.toUtf8();
         it.data = data;
         it.crc = crc32Of(data);
+        it.payload = data;
+        it.method = 0;
+        const QByteArray compressed = deflateBytes(data);
+        if (!compressed.isEmpty() && compressed.size() < data.size()) {
+            it.payload = compressed;
+            it.method = 8;
+        }
         m_items.append(it);
     }
 
@@ -72,16 +96,16 @@ public:
             writeU32(buf, 0x04034b50);
             writeU16(buf, 20);
             writeU16(buf, 0);
-            writeU16(buf, 0); // store
+            writeU16(buf, it.method);
             writeU16(buf, 0);
             writeU16(buf, 0);
             writeU32(buf, it.crc);
-            writeU32(buf, quint32(it.data.size()));
+            writeU32(buf, quint32(it.payload.size()));
             writeU32(buf, quint32(it.data.size()));
             writeU16(buf, quint16(it.name.size()));
             writeU16(buf, 0);
             buf.write(it.name);
-            buf.write(it.data);
+            buf.write(it.payload);
         }
         const quint32 cdStart = quint32(buf.pos());
         for (const ZipItem &it : m_items) {
@@ -89,11 +113,11 @@ public:
             writeU16(buf, 20);
             writeU16(buf, 20);
             writeU16(buf, 0);
-            writeU16(buf, 0);
+            writeU16(buf, it.method);
             writeU16(buf, 0);
             writeU16(buf, 0);
             writeU32(buf, it.crc);
-            writeU32(buf, quint32(it.data.size()));
+            writeU32(buf, quint32(it.payload.size()));
             writeU32(buf, quint32(it.data.size()));
             writeU16(buf, quint16(it.name.size()));
             writeU16(buf, 0);
@@ -398,7 +422,12 @@ QByteArray sheetXml(const Worksheet &ws, const QVector<int> &xfOfCell, const QHa
         rows[row].append(qMakePair(col, it.value()));
     }
     for (auto rit = rows.begin(); rit != rows.end(); ++rit) {
-        xml += "<row r=\"" + QByteArray::number(rit.key() + 1) + "\">";
+        xml += "<row r=\"" + QByteArray::number(rit.key() + 1) + "\"";
+        if (ws.rowHeights.contains(rit.key())) {
+            const double ht = ws.rowHeights.value(rit.key()) * 0.75;
+            xml += " ht=\"" + QByteArray::number(ht, 'f', 2) + "\" customHeight=\"1\"";
+        }
+        xml += ">";
         for (const auto &cell : rit.value()) {
             const int col = cell.first;
             const CellData &d = cell.second;
@@ -582,6 +611,13 @@ static void parseSheetXml(const QByteArray &xml, Worksheet *ws, const QStringLis
             const int px = int(w * 7.0 + 0.5);
             for (int c = min; c <= max; ++c)
                 ws->columnWidths.insert(c, px);
+            continue;
+        }
+        if (r.name() == QLatin1String("row")) {
+            const int rn = r.attributes().value(QStringLiteral("r")).toInt() - 1;
+            const double ht = r.attributes().value(QStringLiteral("ht")).toDouble();
+            if (ht > 0)
+                ws->rowHeights.insert(rn, int(ht * 4.0 / 3.0 + 0.5));
             continue;
         }
         if (r.name() == QLatin1String("mergeCell")) {
@@ -915,8 +951,11 @@ bool FileIo::saveCsv(Workbook *wb, const QString &path, QString *error)
     const QChar sep = QLatin1Char(',');
     for (int r = 0; r <= maxR; ++r) {
         QStringList row;
-        for (int c = 0; c <= maxC; ++c)
-            row.append(csvEscape(wb->displayText(0, r, c), sep));
+        for (int c = 0; c <= maxC; ++c) {
+            const CellData cell = ws.cell(r, c);
+            const QString out = cell.raw.startsWith(QLatin1Char('=')) ? cell.raw : wb->displayText(0, r, c);
+            row.append(csvEscape(out, sep));
+        }
         out << row.join(sep) << QLatin1Char('\n');
     }
     return true;
