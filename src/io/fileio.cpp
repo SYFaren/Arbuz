@@ -1,5 +1,6 @@
 #include "fileio.h"
 #include "cellref.h"
+#include "chart.h"
 #include "i18n.h"
 #include "numformat.h"
 #include "workbook.h"
@@ -701,6 +702,74 @@ static QStringList parseSharedStrings(const QByteArray &xml)
     return out;
 }
 
+static QByteArray chartsXml(const Workbook *wb)
+{
+    QByteArray xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><arbuzCharts>";
+    for (int s = 0; s < wb->sheetCount(); ++s) {
+        const Worksheet &ws = wb->sheet(s);
+        if (ws.charts.isEmpty())
+            continue;
+        xml += "<sheet name=\"" + xmlEscape(ws.name) + "\">";
+        for (const ChartObject &c : ws.charts) {
+            xml += "<chart type=\"" + chartTypeToString(c.type).toUtf8() + "\"";
+            xml += " r1=\"" + QByteArray::number(c.srcR1) + "\" c1=\"" + QByteArray::number(c.srcC1)
+                   + "\" r2=\"" + QByteArray::number(c.srcR2) + "\" c2=\"" + QByteArray::number(c.srcC2) + "\"";
+            xml += " x=\"" + QByteArray::number(c.posX) + "\" y=\"" + QByteArray::number(c.posY) + "\" w=\""
+                   + QByteArray::number(c.widthPx) + "\" h=\"" + QByteArray::number(c.heightPx) + "\"";
+            xml += " header=\"" + QByteArray::number(c.hasHeaderRow ? 1 : 0) + "\" legend=\""
+                   + QByteArray::number(c.showLegend ? 1 : 0) + "\"";
+            xml += " title=\"" + xmlEscape(c.title) + "\"/>";
+        }
+        xml += "</sheet>";
+    }
+    xml += "</arbuzCharts>";
+    return xml;
+}
+
+static void parseChartsXml(const QByteArray &xml, Workbook *wb)
+{
+    if (xml.isEmpty() || !wb)
+        return;
+    QHash<QString, int> sheetByName;
+    for (int i = 0; i < wb->sheetCount(); ++i)
+        sheetByName.insert(wb->sheet(i).name, i);
+
+    QXmlStreamReader r(xml);
+    QString currentSheet;
+    while (!r.atEnd()) {
+        r.readNext();
+        if (!r.isStartElement())
+            continue;
+        if (r.name() == QLatin1String("sheet")) {
+            currentSheet = r.attributes().value(QStringLiteral("name")).toString();
+            continue;
+        }
+        if (r.name() != QLatin1String("chart"))
+            continue;
+        const int sh = sheetByName.value(currentSheet, -1);
+        if (sh < 0)
+            continue;
+        ChartObject c;
+        chartTypeFromString(r.attributes().value(QStringLiteral("type")).toString(), &c.type);
+        c.srcR1 = r.attributes().value(QStringLiteral("r1")).toInt();
+        c.srcC1 = r.attributes().value(QStringLiteral("c1")).toInt();
+        c.srcR2 = r.attributes().value(QStringLiteral("r2")).toInt();
+        c.srcC2 = r.attributes().value(QStringLiteral("c2")).toInt();
+        c.posX = r.attributes().value(QStringLiteral("x")).toInt();
+        c.posY = r.attributes().value(QStringLiteral("y")).toInt();
+        c.widthPx = r.attributes().value(QStringLiteral("w")).toInt();
+        c.heightPx = r.attributes().value(QStringLiteral("h")).toInt();
+        c.hasHeaderRow = r.attributes().value(QStringLiteral("header")).toInt() != 0;
+        c.showLegend = r.attributes().value(QStringLiteral("legend")).toInt() != 0;
+        c.title = r.attributes().value(QStringLiteral("title")).toString();
+        if (c.widthPx < 140)
+            c.widthPx = 360;
+        if (c.heightPx < 100)
+            c.heightPx = 240;
+        wb->sheet(sh).charts.append(c);
+    }
+}
+
 } // namespace
 
 bool FileIo::load(Workbook *wb, const QString &path, QString *error)
@@ -722,14 +791,15 @@ bool FileIo::loadXlsx(Workbook *wb, const QString &path, QString *error)
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly)) {
         if (error)
-            *error = I18n::t("ui.could_not_open_xlsx");
+            *error = I18n::t("ui.could_not_open_xlsx") + QStringLiteral("\n") + path + QStringLiteral("\n")
+                       + f.errorString();
         return false;
     }
     const QHash<QString, QByteArray> files = unzipAll(f.readAll());
     const QByteArray wbXml = files.value(QStringLiteral("xl/workbook.xml"));
     if (wbXml.isEmpty()) {
         if (error)
-            *error = I18n::t("ui.invalid_xlsx");
+            *error = I18n::t("ui.invalid_xlsx") + QStringLiteral("\n") + path;
         return false;
     }
     const auto rels = parseRels(files.value(QStringLiteral("xl/_rels/workbook.xml.rels")));
@@ -778,6 +848,7 @@ bool FileIo::loadXlsx(Workbook *wb, const QString &path, QString *error)
     if (wb->undoStack())
         wb->undoStack()->clear();
     wb->recalculate();
+    parseChartsXml(files.value(QStringLiteral("xl/arbuz/charts.xml")), wb);
     emit wb->structureChanged();
     return true;
 }
@@ -842,6 +913,16 @@ bool FileIo::saveXlsx(Workbook *wb, const QString &path, QString *error)
                        "<Relationship Id=\"rId1\" "
                        "Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" "
                        "Target=\"xl/workbook.xml\"/></Relationships>"));
+
+    bool hasCharts = false;
+    for (int s = 0; s < wb->sheetCount(); ++s) {
+        if (!wb->sheet(s).charts.isEmpty()) {
+            hasCharts = true;
+            break;
+        }
+    }
+    if (hasCharts)
+        zip.add(QStringLiteral("xl/arbuz/charts.xml"), chartsXml(wb));
 
     const QByteArray packed = zip.finish();
     QFile f(path);

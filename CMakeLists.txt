@@ -18,6 +18,7 @@ qt_add_executable(arbuz
     src/core/numformat.cpp
     src/core/workbook.cpp
     src/core/clipdata.cpp
+    src/core/chart.cpp
     src/core/sheetmodel.cpp
     src/core/sheetview.cpp
     src/core/griddelegate.cpp
@@ -30,6 +31,7 @@ qt_add_executable(arbuz
     src/ui/theme.cpp
     src/ui/firstrunwizard.cpp
     src/ui/chartwidget.cpp
+    src/ui/charteditdialog.cpp
     src/ui/creditsdialog.cpp
     src/ui/settingsdialog.cpp
     src/ui/functiondialog.cpp

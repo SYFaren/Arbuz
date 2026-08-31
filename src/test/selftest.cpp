@@ -2,6 +2,7 @@
 
 #include "arbuzicon.h"
 #include "cellref.h"
+#include "chart.h"
 #include "clipdata.h"
 #include "fileio.h"
 #include "formulaengine.h"
@@ -826,6 +827,118 @@ static void testNewFeatures()
     eq(xlsxWb.displayText(0, 0, 0), QStringLiteral("3"), "xlsx formula still evaluates after deflate");
 }
 
+static void testDemoWorkbookFile()
+{
+    QString path = QDir(QCoreApplication::applicationDirPath()).absoluteFilePath(QStringLiteral("../demo/Arbuz-feature-demo.xlsx"));
+    if (!QFile::exists(path))
+        path = QDir::current().absoluteFilePath(QStringLiteral("demo/Arbuz-feature-demo.xlsx"));
+    if (!QFile::exists(path))
+        return;
+    Workbook wb;
+    QString err;
+    ok(FileIo::load(&wb, path, &err), QStringLiteral("load demo xlsx %1").arg(err));
+    ok(wb.sheetCount() == 7, QStringLiteral("demo sheets=%1").arg(wb.sheetCount()));
+    eq(wb.sheet(0).name, QStringLiteral("README"), "demo readme sheet");
+    ok(!wb.displayText(1, 3, 0).isEmpty(), QStringLiteral("demo formula SUM"));
+}
+
+static void testMoreFormulas()
+{
+    Workbook wb;
+    auto put = [&](int row, const QString &raw) { wb.setRaw(0, row, 0, raw); };
+    auto shown = [&](int row) { return wb.displayText(0, row, 0); };
+
+    put(0, QStringLiteral("=COS(0)"));
+    bool cok = false;
+    const double cv = shown(0).toDouble(&cok);
+    ok(cok && cv > 0.99 && cv < 1.01, QStringLiteral("COS(0)"));
+
+    put(1, QStringLiteral("=LN(2.718281828)"));
+    bool lok = false;
+    const double lv = shown(1).toDouble(&lok);
+    ok(lok && lv > 0.99 && lv < 1.01, QStringLiteral("LN(e)"));
+
+    put(2, QStringLiteral("=LOG(100,10)"));
+    eq(shown(2), QStringLiteral("2"), "LOG base 10");
+
+    put(3, QStringLiteral("=EXP(0)"));
+    eq(shown(3), QStringLiteral("1"), "EXP(0)");
+
+    wb.setRaw(0, 80, 0, QStringLiteral("2"));
+    wb.setRaw(0, 81, 0, QStringLiteral("3"));
+    wb.setRaw(0, 82, 0, QStringLiteral("4"));
+    wb.setRaw(0, 80, 1, QStringLiteral("5"));
+    wb.setRaw(0, 81, 1, QStringLiteral("6"));
+    wb.setRaw(0, 82, 1, QStringLiteral("7"));
+    put(4, QStringLiteral("=SUMPRODUCT(A81:A83,B81:B83)"));
+    bool spok = false;
+    const double sp = shown(4).toDouble(&spok);
+    ok(spok && qAbs(sp - 56.0) < 0.01, QStringLiteral("SUMPRODUCT got %1").arg(shown(4)));
+
+    put(5, QStringLiteral("=SEARCH(\"x\",\"abcXyz\")"));
+    eq(shown(5), QStringLiteral("4"), "SEARCH");
+
+    put(6, QStringLiteral("=TEXTJOIN(\",\",TRUE,\"a\",\"\",\"b\")"));
+    eq(shown(6), QStringLiteral("a,b"), "TEXTJOIN");
+
+    put(7, QStringLiteral("=WEEKDAY(DATE(2020,1,6))"));
+    eq(shown(7), QStringLiteral("2"), "WEEKDAY Mon");
+
+    put(8, QStringLiteral("=DAY(EOMONTH(DATE(2020,1,15),0))"));
+    eq(shown(8), QStringLiteral("31"), "EOMONTH Jan");
+
+    wb.setRaw(0, 0, 2, QStringLiteral("a"));
+    wb.setRaw(0, 1, 2, QStringLiteral("b"));
+    wb.setRaw(0, 0, 3, QStringLiteral("1"));
+    wb.setRaw(0, 1, 3, QStringLiteral("2"));
+    put(9, QStringLiteral("=COUNTIFS(C1:C2,\">0\",D1:D2,\">1\")"));
+    eq(shown(9), QStringLiteral("1"), "COUNTIFS");
+
+    put(10, QStringLiteral("=AVERAGEIFS(D1:D2,C1:C2,\">0\")"));
+    eq(shown(10), QStringLiteral("1.5"), "AVERAGEIFS");
+}
+
+static void testCharts()
+{
+    Workbook wb;
+    wb.setRaw(0, 0, 0, QStringLiteral("Month"));
+    wb.setRaw(0, 0, 1, QStringLiteral("Sales"));
+    wb.setRaw(0, 0, 2, QStringLiteral("Cost"));
+    wb.setRaw(0, 1, 0, QStringLiteral("Jan"));
+    wb.setRaw(0, 1, 1, QStringLiteral("100"));
+    wb.setRaw(0, 1, 2, QStringLiteral("40"));
+    wb.setRaw(0, 2, 0, QStringLiteral("Feb"));
+    wb.setRaw(0, 2, 1, QStringLiteral("150"));
+    wb.setRaw(0, 2, 2, QStringLiteral("60"));
+
+    ChartObject ch;
+    ch.srcR1 = 0;
+    ch.srcC1 = 0;
+    ch.srcR2 = 2;
+    ch.srcC2 = 2;
+    ch.hasHeaderRow = true;
+    ch.title = QStringLiteral("Test");
+    ch.type = ChartObject::Column;
+
+    const ChartData data = extractChartData(&wb, 0, ch);
+    ok(data.valid, QStringLiteral("chart data valid"));
+    ok(data.categories.size() == 2, QStringLiteral("chart categories=%1").arg(data.categories.size()));
+    ok(data.series.size() == 2, QStringLiteral("chart series=%1").arg(data.series.size()));
+    eq(data.series.at(0).name, QStringLiteral("Sales"), "chart series name");
+    ok(qAbs(data.series.at(0).values.at(1) - 150.0) < 0.01, QStringLiteral("chart value Feb"));
+
+    wb.sheet(0).charts.append(ch);
+    QTemporaryDir tmp;
+    const QString path = tmp.filePath(QStringLiteral("charts.xlsx"));
+    QString err;
+    ok(FileIo::save(&wb, path, &err), QStringLiteral("save charts xlsx %1").arg(err));
+    Workbook loaded;
+    ok(FileIo::load(&loaded, path, &err), QStringLiteral("load charts xlsx %1").arg(err));
+    ok(loaded.sheet(0).charts.size() == 1, QStringLiteral("chart count roundtrip"));
+    eq(loaded.sheet(0).charts.at(0).title, QStringLiteral("Test"), "chart title roundtrip");
+    ok(loaded.sheet(0).charts.at(0).srcC2 == 2, QStringLiteral("chart range roundtrip"));
+}
+
 int runSelfTest()
 {
     g_fails = 0;
@@ -839,6 +952,9 @@ int runSelfTest()
     testFileIo();
     testXlsxContract();
     testNewFeatures();
+    testMoreFormulas();
+    testCharts();
+    testDemoWorkbookFile();
     testThemeAndI18n();
     testIcons();
     testPluginBridge();

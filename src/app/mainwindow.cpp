@@ -152,6 +152,8 @@ MainWindow::MainWindow(QWidget *parent)
             QStringLiteral("new"));
     iconize(fileMenu->addAction(I18n::t("ui.open"), QKeySequence::Open, this, &MainWindow::openFile),
             QStringLiteral("open"));
+    iconize(fileMenu->addAction(I18n::t("ui.open_demo"), this, &MainWindow::openDemo),
+            QStringLiteral("open"));
     iconize(fileMenu->addAction(I18n::t("ui.save"), QKeySequence::Save, this, &MainWindow::saveFile),
             QStringLiteral("save"));
     iconize(fileMenu->addAction(I18n::t("ui.save_as"), QKeySequence::SaveAs, this, &MainWindow::saveFileAs),
@@ -1655,6 +1657,11 @@ void MainWindow::rebuildCharts()
     for (int i = 0; i < ws.charts.size(); ++i) {
         auto *w = new ChartWidget(m_wb, currentSheet(), i, ws.charts.at(i), m_view->viewport());
         connect(w, &ChartWidget::geometryChanged, this, &MainWindow::syncChartGeometry);
+        connect(w, &ChartWidget::chartEdited, this, [this](int idx) {
+            if (idx >= 0 && idx < m_chartWidgets.size())
+                m_chartWidgets.at(idx)->update();
+            m_dirty = true;
+        });
         w->show();
         w->raise();
         m_chartWidgets.append(w);

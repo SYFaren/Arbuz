@@ -1,9 +1,10 @@
 #include "chartwidget.h"
+#include "charteditdialog.h"
 #include "i18n.h"
-#include "numformat.h"
 #include "workbook.h"
 
 #include <QContextMenuEvent>
+#include <QFontMetrics>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
@@ -12,10 +13,51 @@
 #include <numeric>
 
 namespace {
-constexpr int kTitleH = 22;
+constexpr int kTitleH = 24;
 constexpr int kHandle = 14;
 constexpr int kFrame = 1;
+constexpr int kAxisLeft = 44;
+constexpr int kAxisBottom = 28;
+constexpr int kLegendW = 96;
+
+const QColor kPalette[] = {
+    QColor(176, 34, 46), QColor(18, 64, 28), QColor(52, 108, 58), QColor(245, 180, 50),
+    QColor(80, 120, 200), QColor(160, 80, 180), QColor(200, 100, 80), QColor(100, 160, 160),
+};
+
+QString shortLabel(const QString &text, int maxPx, const QFontMetrics &fm)
+{
+    if (fm.horizontalAdvance(text) <= maxPx)
+        return text;
+    QString s = text;
+    while (!s.isEmpty() && fm.horizontalAdvance(s + QLatin1String("…")) > maxPx)
+        s.chop(1);
+    return s + QLatin1String("…");
 }
+
+QVector<double> yTicks(double ymin, double ymax, int count = 5)
+{
+    QVector<double> ticks;
+    if (count < 2 || ymax <= ymin) {
+        ticks << ymin << ymax;
+        return ticks;
+    }
+    const double span = ymax - ymin;
+    const double raw = span / (count - 1);
+    const double mag = qPow(10.0, qFloor(qLn(raw) / qLn(10.0)));
+    const double step = qCeil(raw / mag) * mag;
+    double v = qFloor(ymin / step) * step;
+    while (v <= ymax + step * 0.01) {
+        if (v >= ymin - step * 0.01)
+            ticks.append(v);
+        v += step;
+    }
+    if (ticks.isEmpty())
+        ticks << ymin << ymax;
+    return ticks;
+}
+
+} // namespace
 
 ChartWidget::ChartWidget(Workbook *wb, int sheetIndex, int chartIndex, ChartObject chart, QWidget *parent)
     : QWidget(parent)
@@ -24,7 +66,7 @@ ChartWidget::ChartWidget(Workbook *wb, int sheetIndex, int chartIndex, ChartObje
     , m_chartIndex(chartIndex)
     , m_chart(chart)
 {
-    setMinimumSize(140, 100);
+    setMinimumSize(180, 140);
     resize(m_chart.widthPx, m_chart.heightPx);
     setMouseTracking(true);
     setFocusPolicy(Qt::ClickFocus);
@@ -67,7 +109,7 @@ void ChartWidget::mousePressEvent(QMouseEvent *event)
         m_drag = Resize;
         m_dragStart = event->globalPosition().toPoint();
         m_originSize = size();
-    } else if (titleBarRect().contains(p) || rect().contains(p)) {
+    } else if (titleBarRect().contains(p)) {
         m_drag = Move;
         m_dragStart = event->globalPosition().toPoint();
         m_originPos = pos();
@@ -116,9 +158,34 @@ void ChartWidget::mouseReleaseEvent(QMouseEvent *event)
     QWidget::mouseReleaseEvent(event);
 }
 
+void ChartWidget::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    if (titleBarRect().contains(event->pos()) || (rect().contains(event->pos()) && !resizeHandleRect().contains(event->pos()))) {
+        editChart();
+        event->accept();
+        return;
+    }
+    QWidget::mouseDoubleClickEvent(event);
+}
+
+void ChartWidget::editChart()
+{
+    ChartEditDialog dlg(m_chart, this);
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+    m_chart = dlg.resultChart();
+    if (m_wb && m_sheet >= 0 && m_sheet < m_wb->sheetCount() && m_chartIndex >= 0
+        && m_chartIndex < m_wb->sheet(m_sheet).charts.size()) {
+        m_wb->sheet(m_sheet).charts[m_chartIndex] = m_chart;
+    }
+    update();
+    emit chartEdited(m_chartIndex);
+}
+
 void ChartWidget::contextMenuEvent(QContextMenuEvent *event)
 {
     QMenu menu(this);
+    menu.addAction(I18n::t("ui.edit_chart"), this, &ChartWidget::editChart);
     menu.addAction(I18n::t("ui.delete_chart"), this, [this]() {
         if (!m_wb || m_sheet < 0 || m_sheet >= m_wb->sheetCount())
             return;
@@ -131,6 +198,29 @@ void ChartWidget::contextMenuEvent(QContextMenuEvent *event)
         }
     });
     menu.exec(event->globalPos());
+}
+
+void ChartWidget::drawLegend(QPainter &p, const QRect &rect, const ChartData &data, bool pieMode)
+{
+    QFont f = p.font();
+    f.setPointSize(qMax(7, f.pointSize() - 1));
+    p.setFont(f);
+    const QFontMetrics fm(f);
+    int y = rect.top() + 4;
+    const int box = 10;
+    const int n = pieMode ? data.categories.size() : data.series.size();
+    for (int i = 0; i < n; ++i) {
+        const QString label = pieMode ? data.categories.at(i) : data.series.at(i).name;
+        p.fillRect(rect.left(), y, box, box, kPalette[i % 8]);
+        p.setPen(QColor(60, 60, 60));
+        p.drawRect(rect.left(), y, box, box);
+        p.setPen(Qt::black);
+        p.drawText(rect.left() + box + 4, y, rect.width() - box - 6, box, Qt::AlignVCenter | Qt::AlignLeft,
+                   shortLabel(label, rect.width() - box - 8, fm));
+        y += box + 4;
+        if (y > rect.bottom() - box)
+            break;
+    }
 }
 
 void ChartWidget::paintEvent(QPaintEvent *)
@@ -147,7 +237,8 @@ void ChartWidget::paintEvent(QPaintEvent *)
     p.drawLine(kFrame, kTitleH + kFrame, width() - kFrame, kTitleH + kFrame);
     const QString title = m_chart.title.isEmpty() ? I18n::t("ui.chart") : m_chart.title;
     p.setPen(Qt::black);
-    p.drawText(titleBarRect().adjusted(6, 0, -6, 0), Qt::AlignVCenter | Qt::AlignLeft, title);
+    p.drawText(titleBarRect().adjusted(6, 0, -6, 0), Qt::AlignVCenter | Qt::AlignLeft,
+               shortLabel(title, titleBarRect().width() - 12, p.fontMetrics()));
 
     p.fillRect(resizeHandleRect(), QColor(200, 200, 200));
     p.setPen(QColor(80, 80, 80));
@@ -158,98 +249,140 @@ void ChartWidget::paintEvent(QPaintEvent *)
     if (!m_wb || m_sheet < 0 || m_sheet >= m_wb->sheetCount())
         return;
 
-    const int r1 = qMin(m_chart.srcR1, m_chart.srcR2);
-    const int r2 = qMax(m_chart.srcR1, m_chart.srcR2);
-    const int c1 = qMin(m_chart.srcC1, m_chart.srcC2);
-    const int c2 = qMax(m_chart.srcC1, m_chart.srcC2);
-    const QRect area = rect().adjusted(8, kTitleH + 8, -10, -10);
-    if (r2 <= r1 || c2 <= c1 || area.width() < 20 || area.height() < 20) {
-        p.drawText(area, Qt::AlignCenter, QStringLiteral("—"));
+    const ChartData data = extractChartData(m_wb, m_sheet, m_chart);
+    const int legendW = (m_chart.showLegend && !data.series.isEmpty()) ? kLegendW : 0;
+    const QRect body = rect().adjusted(4, kTitleH + 6, -kHandle - 2, -kHandle - 2);
+    const QRect plot = body.adjusted(kAxisLeft, 4, -legendW - 4, -kAxisBottom);
+    const QRect legendRect(body.right() - legendW + 2, body.top() + 4, legendW - 4, body.height() - 4);
+
+    if (!data.valid || plot.width() < 24 || plot.height() < 24) {
+        p.drawText(body, Qt::AlignCenter, I18n::t("ui.chart_no_data"));
         return;
     }
 
-    QStringList labels;
-    QVector<double> values;
-    const int labelCol = c1;
-    const int valueCol = c1 + 1;
-    if (valueCol > c2) {
-        p.drawText(area, Qt::AlignCenter, QStringLiteral("—"));
-        return;
-    }
-    for (int r = r1 + 1; r <= r2; ++r) {
-        const QString label = m_wb->displayText(m_sheet, r, labelCol);
-        const QString valText = m_wb->displayText(m_sheet, r, valueCol);
-        double n = 0;
-        if (!NumFormat::parse(valText, &n))
-            continue;
-        labels.append(label.isEmpty() ? QStringLiteral("#%1").arg(r) : label);
-        values.append(n);
-    }
-    if (values.isEmpty()) {
-        p.drawText(area, Qt::AlignCenter, I18n::t("ui.chart_no_data"));
-        return;
-    }
+    const QVector<double> ticks = yTicks(data.yMin, data.yMax);
+    const double ymin = ticks.first();
+    const double ymax = ticks.last();
+    const double yspan = qMax(1e-9, ymax - ymin);
 
-    static const QColor palette[] = {
-        QColor(176, 34, 46), QColor(18, 64, 28), QColor(52, 108, 58), QColor(245, 180, 50),
-        QColor(80, 120, 200), QColor(160, 80, 180), QColor(200, 100, 80), QColor(100, 160, 160),
-    };
+    p.setPen(QColor(180, 180, 180));
+    QFont axisFont = p.font();
+    axisFont.setPointSize(qMax(7, axisFont.pointSize() - 1));
+    p.setFont(axisFont);
+    const QFontMetrics afm(axisFont);
+
+    for (double tv : ticks) {
+        const int y = plot.bottom() - int((tv - ymin) / yspan * plot.height());
+        p.drawLine(plot.left(), y, plot.right(), y);
+        p.setPen(QColor(80, 80, 80));
+        const QString label = QString::number(tv, 'g', 4);
+        p.drawText(4, y - 6, kAxisLeft - 8, 12, Qt::AlignRight | Qt::AlignVCenter, label);
+        p.setPen(QColor(180, 180, 180));
+    }
+    p.setPen(QColor(100, 100, 100));
+    p.drawLine(plot.left(), plot.top(), plot.left(), plot.bottom());
+    p.drawLine(plot.left(), plot.bottom(), plot.right(), plot.bottom());
 
     if (m_chart.type == ChartObject::Pie) {
-        const double sum = std::accumulate(values.cbegin(), values.cend(), 0.0);
-        if (sum <= 0)
+        const ChartSeries &s = data.series.first();
+        const double sum = std::accumulate(s.values.cbegin(), s.values.cend(), 0.0);
+        if (sum <= 0) {
+            p.drawText(plot, Qt::AlignCenter, I18n::t("ui.chart_no_data"));
             return;
-        const QPointF center(area.center());
-        const int radius = qMin(area.width(), area.height()) / 2 - 4;
+        }
+        const QPointF center(plot.center());
+        const int radius = qMin(plot.width(), plot.height()) / 2 - 8;
         double start = 90.0 * 16.0;
-        for (int i = 0; i < values.size(); ++i) {
-            const double span = values.at(i) / sum * 360.0 * 16.0;
-            p.setBrush(palette[i % 8]);
-            p.setPen(Qt::NoPen);
-            p.drawPie(QRectF(center.x() - radius, center.y() - radius, radius * 2, radius * 2),
-                      int(start), int(-span));
+        for (int i = 0; i < s.values.size(); ++i) {
+            const double span = s.values.at(i) / sum * 360.0 * 16.0;
+            p.setBrush(kPalette[i % 8]);
+            p.setPen(Qt::white);
+            p.drawPie(QRectF(center.x() - radius, center.y() - radius, radius * 2, radius * 2), int(start),
+                      int(-span));
             start -= span;
         }
+        if (m_chart.showLegend)
+            drawLegend(p, legendRect, data, true);
         return;
     }
 
-    const double vmax = *std::max_element(values.cbegin(), values.cend());
-    const double scale = vmax > 0 ? (area.height() - 16) / vmax : 1.0;
-    const int n = values.size();
-    const int gap = 4;
+    const int n = data.categories.size();
+    const int seriesCount = data.series.size();
+    const int gap = 3;
 
     if (m_chart.type == ChartObject::Line) {
-        QPainterPath path;
-        const double step = n > 1 ? double(area.width()) / (n - 1) : 0;
-        for (int i = 0; i < n; ++i) {
-            const double x = area.left() + i * step;
-            const double y = area.bottom() - values.at(i) * scale;
-            if (i == 0)
-                path.moveTo(x, y);
-            else
-                path.lineTo(x, y);
-        }
-        p.setPen(QPen(palette[0], 2));
-        p.drawPath(path);
-        p.setBrush(palette[0]);
-        for (int i = 0; i < n; ++i) {
-            const double x = area.left() + (n > 1 ? i * double(area.width()) / (n - 1) : area.width() / 2.0);
-            const double y = area.bottom() - values.at(i) * scale;
-            p.drawEllipse(QPointF(x, y), 3, 3);
+        for (int si = 0; si < seriesCount; ++si) {
+            const ChartSeries &s = data.series.at(si);
+            QPainterPath path;
+            for (int i = 0; i < n; ++i) {
+                const double x = plot.left() + (n > 1 ? i * double(plot.width()) / (n - 1) : plot.width() / 2.0);
+                const double y = plot.bottom() - (s.values.at(i) - ymin) / yspan * plot.height();
+                if (i == 0)
+                    path.moveTo(x, y);
+                else
+                    path.lineTo(x, y);
+            }
+            p.setPen(QPen(kPalette[si % 8], 2));
+            p.drawPath(path);
+            p.setBrush(kPalette[si % 8]);
+            for (int i = 0; i < n; ++i) {
+                const double x = plot.left() + (n > 1 ? i * double(plot.width()) / (n - 1) : plot.width() / 2.0);
+                const double y = plot.bottom() - (s.values.at(i) - ymin) / yspan * plot.height();
+                p.drawEllipse(QPointF(x, y), 3, 3);
+            }
         }
     } else if (m_chart.type == ChartObject::Bar) {
-        const int barH = qMax(4, (area.height() - gap * (n + 1)) / qMax(1, n));
+        const int groupH = qMax(6, (plot.height() - gap * (n + 1)) / qMax(1, n));
         for (int i = 0; i < n; ++i) {
-            const int y = area.top() + gap + i * (barH + gap);
-            const int w = int(values.at(i) * scale);
-            p.fillRect(area.left(), y, w, barH, palette[i % 8]);
+            const int gy = plot.top() + gap + i * (groupH + gap);
+            const int barH = qMax(2, (groupH - gap * (seriesCount - 1)) / qMax(1, seriesCount));
+            for (int si = 0; si < seriesCount; ++si) {
+                const double v = data.series.at(si).values.at(i);
+                const int w = int((v - ymin) / yspan * plot.width());
+                const int y = gy + si * (barH + 1);
+                p.fillRect(plot.left(), y, qMax(0, w), barH, kPalette[si % 8]);
+            }
         }
     } else {
-        const int barW = qMax(4, (area.width() - gap * (n + 1)) / qMax(1, n));
+        const int groupW = qMax(8, (plot.width() - gap * (n + 1)) / qMax(1, n));
         for (int i = 0; i < n; ++i) {
-            const int x = area.left() + gap + i * (barW + gap);
-            const int h = int(values.at(i) * scale);
-            p.fillRect(x, area.bottom() - h, barW, h, palette[i % 8]);
+            const int gx = plot.left() + gap + i * (groupW + gap);
+            const int barW = qMax(2, (groupW - gap * (seriesCount - 1)) / qMax(1, seriesCount));
+            for (int si = 0; si < seriesCount; ++si) {
+                const double v = data.series.at(si).values.at(i);
+                const int h = int((v - ymin) / yspan * plot.height());
+                const int x = gx + si * (barW + 1);
+                p.fillRect(x, plot.bottom() - h, barW, h, kPalette[si % 8]);
+            }
         }
     }
+
+    p.setPen(QColor(60, 60, 60));
+    const int catW = groupW(n, plot.width());
+    for (int i = 0; i < n; ++i) {
+        const int cx = (m_chart.type == ChartObject::Bar)
+            ? plot.left()
+            : int(plot.left() + (n > 1 ? i * double(plot.width()) / (n - 1) : plot.width() / 2.0));
+        const QString lab = shortLabel(data.categories.at(i), catW, afm);
+        if (m_chart.type == ChartObject::Bar) {
+            const int groupH = qMax(6, (plot.height() - gap * (n + 1)) / qMax(1, n));
+            const int gy = plot.top() + gap + i * (groupH + gap);
+            p.drawText(plot.left() - kAxisLeft + 2, gy, kAxisLeft - 4, groupH, Qt::AlignRight | Qt::AlignVCenter, lab);
+        } else {
+            p.drawText(cx - 20, plot.bottom() + 2, 40, kAxisBottom - 4, Qt::AlignHCenter | Qt::AlignTop, lab);
+        }
+    }
+
+    if (m_chart.showLegend && seriesCount > 1)
+        drawLegend(p, legendRect, data, false);
+    else if (m_chart.showLegend && m_chart.type == ChartObject::Line && seriesCount == 1)
+        drawLegend(p, legendRect, data, false);
+}
+
+int ChartWidget::groupW(int n, int plotWidth) const
+{
+    if (n <= 0)
+        return 40;
+    const int gap = 3;
+    return qMax(8, (plotWidth - gap * (n + 1)) / n);
 }

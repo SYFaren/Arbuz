@@ -20,12 +20,14 @@ public:
 
 signals:
     void geometryChanged(int chartIndex);
+    void chartEdited(int chartIndex);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
+    void mouseDoubleClickEvent(QMouseEvent *event) override;
     void contextMenuEvent(QContextMenuEvent *event) override;
 
 private:
@@ -34,6 +36,9 @@ private:
     QRect titleBarRect() const;
     QRect resizeHandleRect() const;
     void emitGeometry();
+    void editChart();
+    void drawLegend(QPainter &p, const QRect &rect, const ChartData &data, bool pieMode);
+    int groupW(int n, int plotWidth) const;
 
     Workbook *m_wb = nullptr;
     int m_sheet = 0;

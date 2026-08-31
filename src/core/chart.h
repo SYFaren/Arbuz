@@ -2,6 +2,9 @@
 #define ARBUZ_CHART_H
 
 #include <QString>
+#include <QVector>
+
+class Workbook;
 
 struct ChartObject {
     enum Type { Column, Bar, Line, Pie };
@@ -16,6 +19,25 @@ struct ChartObject {
     int widthPx = 360;
     int heightPx = 240;
     QString title;
+    bool hasHeaderRow = true;
+    bool showLegend = true;
 };
+
+struct ChartSeries {
+    QString name;
+    QVector<double> values;
+};
+
+struct ChartData {
+    QStringList categories;
+    QVector<ChartSeries> series;
+    double yMin = 0;
+    double yMax = 0;
+    bool valid = false;
+};
+
+ChartData extractChartData(Workbook *wb, int sheetIndex, const ChartObject &chart);
+QString chartTypeToString(ChartObject::Type type);
+bool chartTypeFromString(const QString &s, ChartObject::Type *out);
 
 #endif
