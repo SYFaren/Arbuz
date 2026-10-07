@@ -106,15 +106,25 @@ cp -a "${QT_WIN}/bin/Qt6Core.dll" "${QT_WIN}/bin/Qt6Gui.dll" "${QT_WIN}/bin/Qt6W
   "${QT_WIN}/bin/Qt6PrintSupport.dll" "${RUNTIME}/"
 cp -a "${QT_WIN}/bin/Qt6Network.dll" "${RUNTIME}/" 2>/dev/null || true
 cp -a "${QT_WIN}/bin/"icu*.dll "${RUNTIME}/" 2>/dev/null || true
-cp -a "${QT_WIN}/bin/libgcc_s_seh-1.dll" "${RUNTIME}/" 2>/dev/null || true
-cp -a "${QT_WIN}/bin/libstdc++-6.dll" "${RUNTIME}/" 2>/dev/null || true
-cp -a "${QT_WIN}/bin/libwinpthread-1.dll" "${RUNTIME}/" 2>/dev/null || true
 cp -a "${QT_WIN}/bin/opengl32sw.dll" "${RUNTIME}/" 2>/dev/null || true
 cp -a "${QT_WIN}/bin/d3dcompiler_47.dll" "${RUNTIME}/" 2>/dev/null || true
+
+# The engine needs the libstdc++ of the compiler that built it; Qt's copy may be older.
+SYSROOT="$("${CC}" -print-sysroot 2>/dev/null || true)"
+RT_DIRS=()
+for d in "${MINGW}" "${SYSROOT}" "${QT_WIN}/bin"; do
+  [[ -n "${d}" && -d "${d}" ]] && RT_DIRS+=("${d}")
+done
 for dll in libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll; do
-  if [[ ! -f "${RUNTIME}/${dll}" ]]; then
-    find "${MINGW}" -name "${dll}" | head -1 | xargs -r -I{} cp -a {} "${RUNTIME}/"
+  src="$(dirname "$("${CC}" -print-file-name="${dll}")")/${dll}"
+  if [[ ! -f "${src}" ]]; then
+    src="$(find "${RT_DIRS[@]}" -name "${dll}" -print -quit 2>/dev/null || true)"
   fi
+  if [[ -z "${src}" || ! -f "${src}" ]]; then
+    echo "missing MinGW runtime: ${dll}" >&2
+    exit 1
+  fi
+  cp -aL "${src}" "${RUNTIME}/"
 done
 cp -a "${QT_WIN}/plugins/platforms/qwindows.dll" "${RUNTIME}/qt-plugins/platforms/"
 cp -a "${QT_WIN}/plugins/imageformats/"*.dll "${RUNTIME}/qt-plugins/imageformats/" 2>/dev/null || true

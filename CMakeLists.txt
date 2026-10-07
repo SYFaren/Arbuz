@@ -69,11 +69,11 @@ if(WIN32)
         "${CMAKE_CURRENT_BINARY_DIR}/arbuz.ico"
         COPYONLY
     )
-    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/arbuz_icon.rc" "IDI_ICON1 ICON \"arbuz.ico\"\n")
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/arbuz_icon.rc"
+        "IDI_ICON1 ICON \"${CMAKE_CURRENT_BINARY_DIR}/arbuz.ico\"\n")
     set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/arbuz_icon.rc" PROPERTIES
         OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/arbuz.ico"
     )
-    set(CMAKE_RC_FLAGS "${CMAKE_RC_FLAGS} -I ${CMAKE_CURRENT_BINARY_DIR}")
     target_sources(arbuz PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/arbuz_icon.rc")
     set_target_properties(arbuz PROPERTIES WIN32_EXECUTABLE TRUE)
 

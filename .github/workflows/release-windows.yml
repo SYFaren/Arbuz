@@ -1,0 +1,44 @@
+name: Windows release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attach the Windows zip to (e.g. v1.0.0)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      ARBUZ_QT_WIN: ${{ github.workspace }}/Qt/6.5.3/mingw_64
+      ARBUZ_QT_HOST: ${{ github.workspace }}/Qt/6.5.3/gcc_64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MinGW and CMake
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64 cmake
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+
+      - name: Install Qt 6.5.3
+        run: |
+          pipx install aqtinstall
+          aqt install-qt windows desktop 6.5.3 win64_mingw -O "${GITHUB_WORKSPACE}/Qt"
+          aqt install-qt linux desktop 6.5.3 gcc_64 -O "${GITHUB_WORKSPACE}/Qt"
+
+      - name: Build portable zip
+        run: ./scripts/package-windows.sh
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${TAG}" dist/Arbuz-windows-x86_64.zip --clobber
