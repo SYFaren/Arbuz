@@ -23,6 +23,7 @@ bool AppSettings::firstRunDone() const
 void AppSettings::setFirstRunDone(bool done)
 {
     m_s.setValue(QStringLiteral("firstRunDone"), done);
+    m_s.sync();
 }
 
 QString AppSettings::language() const
