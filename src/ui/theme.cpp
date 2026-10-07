@@ -314,8 +314,13 @@ QString Theme::stylesheet(const QHash<QString, QColor> &p)
 
 void Theme::apply(QApplication *app)
 {
-    if (QStyle *fusion = QStyleFactory::create(QStringLiteral("Fusion")))
-        app->setStyle(fusion);
+    // setStyle() deletes the previous style while live widgets may still reference it.
+    static bool fusionSet = false;
+    if (!fusionSet) {
+        if (QStyle *fusion = QStyleFactory::create(QStringLiteral("Fusion")))
+            app->setStyle(fusion);
+        fusionSet = true;
+    }
     const auto p = currentPalette();
     QPalette pal = app->palette();
     pal.setColor(QPalette::Window, p.value(QStringLiteral("windowBg")));
